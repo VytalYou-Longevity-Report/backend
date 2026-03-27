@@ -219,3 +219,24 @@ async def get_report_html(session_id: str):
     )
 
     return HTMLResponse(content=html)
+
+
+@app.post("/api/process-all")
+async def process_all(
+    laboratory_report: UploadFile = File(None),
+    radiology_report: UploadFile = File(None),
+    excel_report: UploadFile = File(None),
+):
+    """Unified endpoint: Upload → Extract → Analyze in one sequence."""
+    # 1. Upload
+    upload_res = await upload_reports(laboratory_report, radiology_report, excel_report)
+    session_id = upload_res.session_id
+    
+    # 2. Run Pipeline
+    report_data = await full_report(session_id)
+    
+    # 3. Add PDF URL for direct frontend use
+    report_data = report_data.dict()
+    report_data["pdf_url"] = f"https://api2.vytalyou.com/api/report/{session_id}/html"
+    
+    return report_data
