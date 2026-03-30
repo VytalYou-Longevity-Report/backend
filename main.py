@@ -237,6 +237,8 @@ async def process_all(
     
     # 3. Add PDF URL for direct frontend use
     report_data = report_data.dict()
-    report_data["pdf_url"] = f"https://api2.vytalyou.com/api/report/{session_id}/html"
+    base_url = os.getenv("API_BASE_URL", "http://localhost:8000")
+    report_data["pdf_url"] = f"{base_url}/api/report/{session_id}/html"
     
     return report_data
+

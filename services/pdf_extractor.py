@@ -33,8 +33,8 @@ class PDFExtractor:
     def _build_patient_patterns(self) -> Dict[str, List[re.Pattern]]:
         return {
             "age": [
-                re.compile(r"age\s*[:\-]?\s*(\d{1,3})\s*(?:years?|yrs?|y)?", re.IGNORECASE),
-                re.compile(r"(\d{1,3})\s*(?:years?|yrs?)\s*(?:old)?", re.IGNORECASE),
+                re.compile(r"\bage\s*[:\-]?\s*(\d{1,3})\s*(?:years?|yrs?|y)?\b", re.IGNORECASE),
+                re.compile(r"\b(\d{1,3})\s*(?:years?|yrs?)\s*(?:old)?\b", re.IGNORECASE),
             ],
             "gender": [
                 re.compile(r"(?:sex|gender)\s*[:\-]?\s*(male|female|m|f)", re.IGNORECASE),
@@ -331,6 +331,39 @@ class PDFExtractor:
 
     # ─── MAIN EXTRACTION ─────────────────────────────────────────────
 
+    # Phrases in Excel result cells that indicate no actual result is available
+    PLACEHOLDER_PHRASES = {
+        "awaiting laboratory correlation",
+        "awaiting results",
+        "awaiting result",
+        "not done",
+        "pending",
+        "specimen not received",
+        "see comment",
+        "see below",
+        "n/a",
+        "not applicable",
+        "not available",
+        "insufficient sample",
+        "test not performed",
+        "cancelled",
+        "rejected",
+    }
+
+    def _is_valid_result(self, value: str) -> bool:
+        """Check whether a result value from an Excel cell is a real lab result.
+        Returns False for placeholder text like 'Awaiting Laboratory Correlation'."""
+        if not value or value.strip().lower() == "nan":
+            return False
+        cleaned = value.strip().rstrip(".").lower()
+        # Reject known placeholder phrases
+        if cleaned in self.PLACEHOLDER_PHRASES:
+            return False
+        # Reject values that contain no digit at all (they cannot be lab numbers)
+        if not any(ch.isdigit() for ch in value):
+            return False
+        return True
+
     def extract_text_from_excel(self, filepath: str) -> str:
         """Extract tabular data from an Excel file into a regex-friendly string format."""
         try:
@@ -345,7 +378,43 @@ class PDFExtractor:
                     break
             
             df = pd.read_excel(filepath, header=header_idx, engine="calamine")
-            text = ""
+
+            # ── Extract patient info FIRST so it appears before test results ──
+            # This ensures the age regex matches the real patient age, not a
+            # false positive from test names like "Percentage" or "Average".
+            patient_text = ""
+            patient_found = False
+            for _, row in df.iterrows():
+                row_has_name = False
+                row_has_age = False
+                for col in df.columns:
+                    col_str = str(col).lower().strip()
+                    val = str(row[col]).strip()
+                    if val.lower() == "nan" or not val:
+                        continue
+                    if "patient name" in col_str:
+                        patient_text += f"Patient Name: {val}\n"
+                        row_has_name = True
+                    elif col_str == "age" or ("patient" in col_str and "age" in col_str):
+                        # Clean age value: handle "58 Years", "58.0", "58Y" etc.
+                        age_clean = re.search(r"(\d+)", val)
+                        if age_clean:
+                            patient_text += f"Age: {age_clean.group(1)} Years\n"
+                            row_has_age = True
+                    elif "age" in col_str and "percentage" not in col_str and "average" not in col_str and "dosage" not in col_str:
+                        age_clean = re.search(r"(\d+)", val)
+                        if age_clean:
+                            patient_text += f"Age: {age_clean.group(1)} Years\n"
+                            row_has_age = True
+                    elif "gender" in col_str or "sex" in col_str:
+                        patient_text += f"Gender: {val}\n"
+                # Stop after finding the first row with patient name or age
+                if row_has_name or row_has_age:
+                    patient_found = True
+                    break
+
+            # ── Extract test results ──
+            results_text = ""
             for _, row in df.iterrows():
                 test_name = None
                 for candidate in ["name to be printed", "parameter", "test name", "investigation", "service name"]:
@@ -365,24 +434,13 @@ class PDFExtractor:
                     if result_val:
                         break
                 
-                if test_name is not None and str(test_name).lower() != "nan" and result_val is not None and str(result_val).lower() != "nan":
-                    text += f"{test_name}: {result_val}\n"
+                if (test_name is not None and str(test_name).lower() != "nan"
+                        and result_val is not None
+                        and self._is_valid_result(result_val)):
+                    results_text += f"{test_name}: {result_val}\n"
 
-            for _, row in df.iterrows():
-                has_patient = False
-                for col in df.columns:
-                    col_str = str(col).lower()
-                    if "patient name" in col_str and str(row[col]).lower() != "nan":
-                        text += f"Patient Name: {row[col]}\n"
-                        has_patient = True
-                    if "age" in col_str and str(row[col]).lower() != "nan":
-                        text += f"Age: {row[col]}\n"
-                    if ("gender" in col_str or "sex" in col_str) and str(row[col]).lower() != "nan":
-                        text += f"Gender: {row[col]}\n"
-                if has_patient:
-                    break
-                    
-            return text
+            # Patient info comes first so regex matches it before any test data
+            return patient_text + results_text
         except Exception as e:
             print(f"Error reading Excel file: {e}")
             return ""
@@ -399,12 +457,15 @@ class PDFExtractor:
         """
         all_text = ""
 
+        # Excel data goes FIRST — it has clean structured patient info (Age, Name, Gender)
+        # at the top, ensuring the regex matches the correct patient metadata before
+        # encountering false positives from PDF test result labels.
+        if excel_report_path is not None and Path(excel_report_path).exists():
+            all_text += self.extract_text_from_excel(excel_report_path) + "\n\n"
+
         for filepath in [laboratory_report_path, radiology_report_path]:
             if filepath is not None and Path(filepath).exists():
                 all_text += self.extract_text_from_pdf(filepath) + "\n\n"
-                
-        if excel_report_path is not None and Path(excel_report_path).exists():
-            all_text += self.extract_text_from_excel(excel_report_path) + "\n\n"
 
         if not all_text.strip():
             return ExtractedPatientData()

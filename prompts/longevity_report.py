@@ -194,7 +194,7 @@ Overall Longevity Status: **Grade: [A/A+/B/B+/C/C+/D] ([Full Clinical Descriptio
 
 [If patient is at HIGH cardiovascular risk (Grade C/D, diabetes, dyslipidemia, age >40), include the full ASCVD section below. For young/low-risk patients, skip ASCVD and instead write a brief contextual interpretation.]
 
-### AHA/ACC ASCVD 10-Year Risk Score (INCLUDE ONLY IF HIGH RISK)
+### AHA/ACC ASCVD 10-Year Risk Score
 **Calculated Risk: ~[X]% – [Y]%**
 
 | Risk % | Category |
