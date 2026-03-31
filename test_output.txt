@@ -1,0 +1,85 @@
+--- PATIENT --- (3 filled, 1 missing)
+  Filled: {
+    "age": 26,
+    "gender": "Female",
+    "name": "Joanne Jiji"
+}
+  Missing: ['date_of_report']
+
+--- LABS --- (28 filled, 3 missing)
+  Filled: {
+    "hba1c": 8.2,
+    "fasting_glucose": 196.5,
+    "fasting_insulin": 16.08,
+    "homa_ir": 7.8,
+    "creatinine": 0.72,
+    "egfr": 143.4,
+    "bun": 11.5,
+    "uric_acid": 3.3,
+    "albumin": 3.92,
+    "hemoglobin": 12.2,
+    "wbc": 10150.0,
+    "platelet_count": 522000.0,
+    "tsh": 1.7,
+    "vitamin_d": 10.67,
+    "vitamin_b12": 381.2,
+    "ferritin": 207.5,
+    "iron": 54.5,
+    "ige": 327.0,
+    "calcium": 9.7,
+    "globulin": 3.63,
+    "total_protein": 7.55,
+    "mean_plasma_glucose": 212.0,
+    "rbc_count": 4.54,
+    "hematocrit": 37.3,
+    "mcv": 82.1,
+    "mch": 26.8,
+    "mchc": 32.6,
+    "tibc": 260.1
+}
+  Missing: ['post_prandial_glucose', 'free_t4', 'psa']
+
+--- LIPIDS --- (8 filled, 1 missing)
+  Filled: {
+    "total_cholesterol": 198.0,
+    "ldl": 103.3,
+    "hdl": 38.1,
+    "triglycerides": 71.7,
+    "vldl": 14.34,
+    "chol_hdl_ratio": 5.2,
+    "ldl_hdl_ratio": 2.71,
+    "apob": 101.0
+}
+  Missing: ['lp_a']
+
+--- LIVER --- (8 filled, 3 missing)
+  Filled: {
+    "sgot_ast": 12.2,
+    "sgpt_alt": 26.1,
+    "ggt": 27.8,
+    "alp": 126.0,
+    "total_bilirubin": 0.3,
+    "direct_bilirubin": 0.16,
+    "tai": 0.78,
+    "fat_fraction": 12.92
+}
+  Missing: ['fatty_liver_grade', 'fibroscan_kpa', 'cap_score']
+
+--- INFLAMMATION --- (3 filled, 3 missing)
+  Filled: {
+    "hs_crp": 17.89,
+    "esr": 55.0,
+    "homocysteine": 15.3
+}
+  Missing: ['crp', 'il6', 'tnf_alpha']
+
+--- INBODY --- (0 filled, 17 missing)
+  Filled: {}
+  Missing: ['weight', 'height', 'bmi', 'body_fat_percentage', 'skeletal_muscle_mass', 'visceral_fat_area', 'visceral_fat_level', 'basal_metabolic_rate', 'total_body_water', 'phase_angle', 'ecw_tbw_ratio', 'smi', 'waist_circumference', 'waist_hip_ratio', 'obesity_degree', 'body_fat_mass', 'inbody_score']
+
+--- CARDIAC --- (2 filled, 9 missing)
+  Filled: {
+    "ecg_findings": "INTERPRETATION",
+    "echo_findings": "CONCLUSION:"
+}
+  Missing: ['systolic_bp', 'diastolic_bp', 'heart_rate', 'ejection_fraction', 'lvef', 'e_a_ratio', 'lv_mass_index', 'calcium_score', 'diastolic_dysfunction']

@@ -35,61 +35,34 @@ Derived Metrics:
 You MUST:
 - Identify the PRIMARY root cause driver (e.g., insulin resistance, inflammation, obesity, deficiency)
 - Identify SECONDARY, TERTIARY, QUATERNARY drivers IF they exist
-- Show the CAUSALITY CHAIN explicitly — but ONLY include links that are supported by actual abnormal values
-- Identify downstream organ effects that are ACTUALLY PRESENT in the data
-- DO NOT exaggerate mild deviations into catastrophic chains
+- Show the CAUSALITY CHAIN explicitly (e.g., Insulin Resistance → Hyperglycemia → Hepatic Steatosis → Inflammation → Organ Damage)
+- Identify ALL downstream organ effects
+- ALSO identify all PROTECTIVE FACTORS that counterbalance risk (e.g., preserved HbA1c, low inflammatory markers, good muscle reserve, preserved organ function)
 
-SEVERITY CALIBRATION FOR ROOT CAUSE DESCRIPTION:
-- Use "Severe" ONLY when values are far outside normal (e.g., HOMA-IR >5, HbA1c >7, hsCRP >5, VFA >150 cm²)
-- Use "Moderate" for clearly abnormal values (e.g., HOMA-IR 3-5, HbA1c 6.0-6.9, hsCRP 2-5)
-- Use "Early" or "Mild" for borderline/slightly abnormal values (e.g., HOMA-IR 2.5-3.0, HbA1c 5.7-5.9, hsCRP 1-2)
-- Use "Emerging" for values that are borderline but not yet clinically abnormal
-
-Example (SEVERE case):
-Primary → Severe insulin resistance (HOMA-IR 7.8)
+Example (severe case):
+Primary → Insulin resistance (HOMA-IR 7.8)
 Secondary → Visceral adiposity (VFA 201 cm²)
-Tertiary → Chronic systemic inflammation (hsCRP 17.89)
+Tertiary → Chronic inflammation (hsCRP 17.89)
 Quaternary → Hepatic steatosis + cardiac remodeling
 
-Example (MILD/EARLY case):
-Primary → Early insulin resistance (HOMA-IR 2.93)
-Secondary → Hepatic steatosis (fat fraction 18.71%)
-Tertiary → HDL-centered dyslipidemia (HDL 35 mg/dL)
-[No quaternary if no additional severe abnormalities exist]
+Example (moderate case):
+Primary → Insulin resistance (HOMA-IR 2.93) — early/moderate, NOT severe
+Secondary → Hepatic steatosis (fat fraction 18.71%) — without fibrosis progression
+Protective → HbA1c still normal (5.3%), low inflammation (hsCRP 0.48), strong muscle reserve, preserved cardiac function
 
 ---
 
 ### 2. PHENOTYPE CLASSIFICATION (MANDATORY)
-Assign a SPECIFIC clinically meaningful phenotype name. Be precise and PROPORTIONAL to actual severity.
+Assign a SPECIFIC clinically meaningful phenotype name. Be precise AND proportionate.
+The phenotype MUST reflect BOTH the disease burden AND the preserved/protective elements.
 
-IMPORTANT: The phenotype name must ACCURATELY reflect the actual disease severity. Do NOT use catastrophic language for mild/early cases.
+Examples (matched to severity):
+- SEVERE: "Severe Insulin Resistance with Overt Diabetes + Visceral Obesity + Chronic Systemic Inflammation + Moderate Fatty Liver + Early Cardiac Remodeling"
+- MODERATE: "Insulin-resistant fatty liver phenotype with preserved cardiac function and strong musculoskeletal reserve"
+- MILD: "Early metabolic drift with excellent inflammatory and organ reserve"
+- OPTIMAL: "Low-risk resilience phenotype with excellent metabolic markers"
 
-Examples by severity:
-
-SEVERE (HbA1c >7, HOMA-IR >5, hsCRP >5, multi-organ damage):
-- "Severe Insulin Resistance with Overt Diabetes + Visceral Obesity + Chronic Systemic Inflammation + Moderate Fatty Liver + Early Cardiac Remodeling"
-- "Advanced Cardiometabolic-Inflammatory Aging Phenotype"
-
-MODERATE (HbA1c 6.0-6.9, HOMA-IR 3-5, some organ involvement):
-- "Insulin-resistant metabolic syndrome with early organ involvement"
-- "Moderate cardiometabolic risk phenotype with central adiposity"
-
-MILD/EARLY (HbA1c <6, HOMA-IR 2.5-3.5, preserved organ function):
-- "Insulin-resistant fatty liver phenotype with preserved cardiac function and strong musculoskeletal reserve"
-- "Early metabolic drift pattern with high reversibility potential"
-- "Pre-diabetic trajectory with focal hepatic involvement"
-
-OPTIMAL:
-- "Low-risk resilience phenotype with excellent metabolic markers"
-- "Age-optimized metabolic phenotype"
-
-DO NOT use terms like "metabolic collapse", "severe metabolic inflammatory disease", or catastrophic language when:
-- HbA1c is <6%
-- hsCRP is <1 mg/L
-- ESR is normal
-- Cardiac function is preserved (EF ≥55%)
-- Kidney function is preserved
-- Muscle mass is adequate
+CRITICAL: Do NOT use catastrophic language (e.g., "metabolic collapse", "severe multi-system disease") unless the data truly warrants it (e.g., HbA1c >8, hsCRP >5, multiple organ failures). A patient with HOMA-IR 2.93 and preserved HbA1c is NOT in "metabolic collapse."
 
 This MUST appear in:
 - Overall summary
@@ -109,7 +82,7 @@ DO NOT list values in isolation. ALWAYS show the causal pathway.
 
 ---
 
-### 4. RISK OVERRIDE LOGIC (IMPORTANT)
+### 4. RISK OVERRIDE LOGIC (VERY IMPORTANT)
 Standard AHA/ASCVD risk calculators may UNDERESTIMATE risk because they do NOT factor in:
 - Insulin resistance
 - Visceral fat
@@ -119,20 +92,15 @@ Standard AHA/ASCVD risk calculators may UNDERESTIMATE risk because they do NOT f
 - Body composition
 
 If metabolic dysfunction exists:
-- Calculate the standard AHA/ASCVD risk
-- Then provide ADJUSTED CLINICAL RISK interpretation — this should be PROPORTIONALLY higher, not catastrophically higher
-- Clearly explain WHICH specific non-traditional factors apply to this patient
-- Provide lifetime-equivalent risk perspective
+- Calculate the standard AHA/ACC-style risk (note: traditional 10-year PCE is for ages 40-79; use appropriate framing for younger patients)
+- Then provide VYTALYOU ADJUSTED RISK that accounts for non-traditional factors
+- Clearly explain WHAT the standard risk misses
+- Provide lifetime metabolic-cardiovascular risk category (Low / Moderate / Elevated / High)
+- Be proportionate: mild insulin resistance + fatty liver ≠ same risk as overt diabetes + severe inflammation + obesity
 
-ADJUSTMENT RULES:
-- If standard risk is <5% but patient has 1-2 non-traditional factors with mild abnormalities → adjusted risk is "low short-term, mildly elevated lifetime"
-- If standard risk is <5% but patient has 3+ non-traditional factors or moderate abnormalities → adjusted risk is "low short-term, moderately elevated lifetime" (10-15%)
-- If standard risk is 5-7.5% with additional non-traditional factors → adjusted risk moves up ONE category
-- DO NOT jump from <5% to >20% based on mild metabolic deviations alone
+For patients < 40 years: Note that age-based ASCVD tools have limitations at younger ages. Provide lifetime risk framing instead, but do NOT artificially inflate the number.
 
-For patients < 40 years: Age-based ASCVD will be low due to age. State this clearly but do NOT catastrophize — provide balanced lifetime-equivalent risk instead.
-
-IMPORTANT: When protective factors exist (low hsCRP, normal EF, preserved renal function, good muscle mass), these MODULATE risk downward and must be acknowledged.
+IMPORTANT: The adjusted risk should be CLINICALLY JUSTIFIED, not reflexively maximized. A low short-term risk with elevated lifetime metabolic risk is a valid and honest assessment.
 
 ---
 
@@ -149,90 +117,69 @@ Example: "Biological age reversal: 55 → 35–40 years (within 9–12 months wi
 
 ### 6. CLINICAL SEVERITY GRADING (BALANCED AND ACCURATE)
 
-- Grade A → All systems optimal, no deviations. Bio age = chronological age or younger.
-- Grade A- → Near-optimal with 1 minor flag. Easily correctable.
-- Grade B+ → Mild deviation in 1-2 systems, strong protective factors present.
-- Grade B → Mild-to-moderate deviations in 2-3 systems, mostly correctable.
-- Grade B- → Multiple mild deviations or 1 moderate deviation with some protective factors.
-- Grade C+ → Early/moderate metabolic dysfunction in 2-3 systems BUT with significant preserved protective factors (e.g., normal HbA1c, low inflammation, preserved cardiac/renal function, good muscle mass).
-- Grade C → Moderate disease in multiple systems with limited protective factors.
-- Grade C- → Moderate-to-significant disease approaching active organ damage.
-- Grade D → Active disease with confirmed organ damage AND poor protective factors (e.g., HbA1c >6.5 + active inflammation hsCRP >3 + structural organ changes + poor body composition).
-- Grade D+ → Severe multi-system disease with structural changes AND poor prognosis markers.
+- Grade A → All systems optimal, no deviations
+- Grade A- → Near-optimal with 1 very minor flag
+- Grade B+ → Good overall with 1-2 mild deviations, easily correctable
+- Grade B → Mild deviations in 2-3 systems, correctable
+- Grade B- → Multiple mild deviations or 1 moderate deviation with good reserves
+- Grade C+ → Moderate disease in 1-2 systems but with significant protective factors and preserved function elsewhere
+- Grade C → Moderate disease in multiple systems
+- Grade C- → Moderate-to-significant disease in multiple systems, limited protective factors
+- Grade D → Active disease with organ involvement AND loss of compensatory mechanisms
+- Grade D+ → Severe multi-system disease with structural changes AND multiple failing compensatory mechanisms
 
-GRADING CALIBRATION EXAMPLES:
-- HOMA-IR 2.93 + fatty liver Grade III + normal HbA1c + low hsCRP + preserved EF + good muscle = Grade C+ (NOT Grade D)
-- HbA1c 8.2 + HOMA-IR 7.8 + hsCRP 17.89 + fatty liver + cardiac remodeling = Grade D
-- HbA1c 6.8 + moderate inflammation + early organ changes = Grade C to C-
-- All normal with mild vitamin deficiency = Grade B+
+CALIBRATION ANCHORS (use these as reference points):
+- HbA1c 8.2 + HOMA-IR 7.8 + hsCRP 17.89 + fatty liver + VFA 201 + cardiac remodeling = Grade D or D+
+- HbA1c 5.3 + HOMA-IR 2.93 + hsCRP 0.48 + fatty liver + good muscle + preserved EF = Grade C+ (moderate metabolic disease BUT significant protective factors)
+- All labs normal, minor vitamin deficiency = Grade B+
+- Everything optimal = Grade A
 
-CRITICAL GRADING RULES:
-1. Grade D requires ACTIVE disease with confirmed organ damage AND poor protective factors
-2. Preserved HbA1c (<5.7%), low hsCRP (<1), normal EF (>55%), good muscle mass — these are STRONG protective factors that PREVENT grading higher than C+
-3. DO NOT grade someone D when their HbA1c is normal, inflammation is absent, cardiac function is preserved, and kidney function is good
-4. Fatty liver alone (even Grade III), without fibrosis progression and with normal liver enzymes, does NOT automatically make someone Grade D
-5. The presence of strong protective factors ALWAYS moderates the grade downward
+CRITICAL: Do NOT overgrade OR undergrade.
+- Do NOT give Grade D+ to someone with preserved HbA1c, low inflammatory markers, and good muscle reserve just because they have fatty liver and mild insulin resistance.
+- Do NOT give Grade B to someone with overt diabetes and severe inflammation.
+- The grade MUST reflect the NET clinical picture: risks MINUS protective factors.
 
 ---
 
-### 7. BIOLOGICAL AGE CALCULATION (PROPORTIONAL AND CLINICALLY ACCURATE)
+### 7. BIOLOGICAL AGE CALCULATION (PROPORTIONATE AND EVIDENCE-BASED)
 
-BIOLOGICAL AGE DRIFT MUST BE PROPORTIONAL TO ACTUAL DISEASE SEVERITY:
+GUIDELINES (not rigid rules — use clinical judgment):
+- For SEVERE disease (overt diabetes HbA1c >7 + severe inflammation hsCRP >5 + fatty liver + obesity): Biological age drift +15 to +25 years
+- For MODERATE disease (early insulin resistance + fatty liver BUT preserved HbA1c, low inflammation, good reserves): Biological age drift +6 to +12 years
+- For MILD deviations (borderline values, 1-2 minor flags): +3 to +6 years
+- For OPTIMAL (all systems strong): 0 to +2 years
 
-- For SEVERE MULTI-SYSTEM disease (overt diabetes HbA1c >7 + active inflammation hsCRP >5 + organ damage + poor body composition): Drift +15 to +25 years
-- For MODERATE MULTI-SYSTEM disease (pre-diabetes HbA1c 6.0-6.9 + moderate inflammation + some organ involvement): Drift +8 to +15 years
-- For EARLY/MILD disease (borderline glucose + preserved HbA1c <5.7 + low inflammation + focal organ findings + good protective factors): Drift +4 to +10 years
-- For MINIMAL deviations (1-2 mild flags): Drift +2 to +5 years
-- For OPTIMAL: 0 to +2 years
+CALIBRATION ANCHORS:
+- HOMA-IR 7.8 + HbA1c 8.2 + hsCRP 17.89 + VFA 201 = biological age +20 to +25 years
+- HOMA-IR 2.93 + HbA1c 5.3 + hsCRP 0.48 + fatty liver + good muscle + LVEF 60% = biological age +6 to +10 years
+- All normal, minor B12 low = biological age +1 to +3 years
 
-CALIBRATION EXAMPLES:
-- HbA1c 8.2 + HOMA-IR 7.8 + hsCRP 17.89 + fatty liver + LVH → drift +18 to +25 years (SEVERE)
-- HbA1c 5.3 + HOMA-IR 2.93 + hsCRP 0.48 + fatty liver Grade III + preserved EF 60% + good muscle → drift +6 to +10 years (EARLY/MILD)
-- All normal with mild vitamin D deficiency → drift +1 to +3 years (MINIMAL)
+The biological age MUST be proportionate to the ACTUAL severity of findings, not the theoretical worst case.
+Acknowledge protective factors that DECELERATE aging (e.g., good muscle mass, low inflammation, preserved organ function).
 
-NEVER give a drift of +15 to +20 years when:
-- HbA1c is still normal (<5.7%)
-- hsCRP is <1 mg/L
-- ESR is normal
-- Cardiac function is preserved
-- Kidney function is preserved
-- Muscle mass is good
-These protective factors cap the bio age drift.
-
-Age-specific metabolic/inflammatory/cardiovascular ages must reflect ACTUAL severity of each system:
-- Severe insulin resistance (HOMA-IR >5, HbA1c >7) → metabolic age +15 to +25 years
-- Early insulin resistance (HOMA-IR 2.5-4, HbA1c <6) → metabolic age +5 to +10 years
-- Severe inflammation (hsCRP >5, ESR >30) → inflammatory age +15 to +25 years
-- Low/absent inflammation (hsCRP <1, ESR <10) → inflammatory age +0 to +3 years (this is PROTECTIVE, not a risk!)
-- Severe cardiac remodeling with reduced EF → cardiovascular age +15 to +20 years
-- Mild LVH with preserved EF → cardiovascular age +4 to +8 years
+Age-specific metabolic/inflammatory/cardiovascular ages:
+- Should reflect EACH system's actual severity independently
+- A system with preserved function should NOT be aged excessively
+- Example: If inflammation markers are reassuring (hsCRP 0.48, ESR 3), inflammatory age should be NEAR chronological age, not +15 years
 
 ---
 
-### 8. LONGEVITY SCORE CALCULATION (PROPORTIONAL TO ACTUAL SEVERITY)
+### 8. LONGEVITY SCORE CALCULATION (BALANCED)
 
-STRICT RULES — SCORE MUST MATCH ACTUAL CLINICAL PICTURE:
-- Severe multi-system disease (overt diabetes + active inflammation + organ damage): Score 25-40/100
-- Moderate multi-system disease (pre-diabetes + moderate inflammation + early organ changes): Score 40-55/100
-- Early/mild disease with strong protective factors (borderline glucose + preserved HbA1c + low inflammation + focal organ findings + good muscle/cardiac/renal reserve): Score 55-70/100
-- Mild deviations in 1-2 systems only: Score 70-80/100
+GUIDELINES:
+- Severe multi-system disease with all compensatory mechanisms failing: Score 20-35/100
+- Severe disease in 1-2 systems but with preserved reserves elsewhere: Score 35-50/100
+- Moderate disease with significant protective factors: Score 55-70/100
+- Mild deviations with strong reserves: Score 70-80/100
 - Mostly optimal with minor flags: Score 80-90/100
-- All optimal: Score 90-100/100
+- All optimal: Score 90-97/100
 
-CALIBRATION EXAMPLES:
-- HbA1c 8.2 + HOMA-IR 7.8 + hsCRP 17.89 + fatty liver + cardiac remodeling → Score 30-38/100
-- HbA1c 5.3 + HOMA-IR 2.93 + hsCRP 0.48 + fatty liver Grade III + EF 60% + good muscle → Score 62-70/100
-- All normal values → Score 90-95/100
+DOMAIN SCORING must reflect EACH domain independently:
+- A domain with fully preserved function (e.g., inflammation with hsCRP 0.48, ESR 3) should score 80-90, NOT 50
+- A domain with severe disease (e.g., liver with 18.71% fat fraction) should score 35-45
+- A domain with good reserve (e.g., muscle with SMI 7.8, phase angle 6.3) should score 80-90
 
-DOMAIN SCORING MUST ALSO BE PROPORTIONAL:
-- Inflammation domain with hsCRP 0.48 and ESR 3 → Score 85-92 (this is REASSURING, not 50!)
-- Glycemic domain with HbA1c 5.3 but HOMA-IR 2.93 → Score 62-72 (mixed, not 40)
-- Muscle domain with SMM 32.6 kg, SMI 7.8 kg/m², phase angle 6.3° → Score 82-88
-- Cardiac domain with EF 60%, normal valves, normal ECG, only mild LVH → Score 72-80
-- Liver domain with Grade III steatosis but no fibrosis and normal enzymes → Score 38-48
-
-NEVER score inflammation at 50 when hsCRP is 0.48 and ESR is 3 — that is excellent inflammation profile.
-NEVER score glycemic at 40 when HbA1c is still 5.3 — there is no overt glucose dysregulation yet.
+The composite score is the weighted average reflecting clinical importance, NOT the lowest domain score.
 
 ---
 
@@ -280,20 +227,16 @@ Follow EXACTLY this structure. Fill ALL sections with real data. No section may 
 ---
 
 OVERALL LONGEVITY STATUS:
-Grade: [A/A-/B+/B/B-/C+/C/C-/D/D+] ([Clinical description PROPORTIONAL to actual severity])
+Grade: [A/B/C/D/D+] ([Full Clinical Description — e.g., "Severe Early Metabolic Inflammatory Disease"])
 
-[2-3 sentence clinical narrative that:
-1. Accurately describes the dominant pattern (e.g., "insulin-resistant fatty liver phenotype" NOT "severe metabolic inflammatory disease" if inflammation is actually low)
-2. Acknowledges BOTH risks AND protective factors
-3. States whether this is early/reversible vs advanced/progressive]
+This is a [risk level] [phenotype description] in a [age category] individual, driven by:
+• [Primary driver with value]
+• [Secondary driver with value]
+• [Tertiary driver with value]
+• [Quaternary driver with value]
+• [Additional drivers if applicable]
 
-This is a [accurate risk level] phenotype in a [age category] individual, driven by:
-• [Primary driver with actual severity qualifier and value]
-• [Secondary driver with value, if present]
-• [Tertiary driver with value, if present]
-• [Additional drivers ONLY if genuinely present — do NOT pad this list]
-
-[One-line reversibility statement that matches actual severity]
+[One-line reversibility statement, e.g., "This is a reversible but urgent metabolic disease state" or "This is a high-potential optimization profile with excellent reversibility"]
 
 ---
 
@@ -570,10 +513,10 @@ Biological age reversal: [Current bio age] → [Target bio age] years (within [X
 | Micronutrients | [key value] | [interpretation] |
 
 ### FINAL INSIGHT
-[One powerful phenotype summary line that MATCHES actual severity. Examples by tier:
-- Severe: "This is a 'severe multi-system metabolic disease phenotype' with urgent intervention needed BUT: reversibility potential remains if acted upon now"
-- Mild/Early: "This is an 'early insulin-resistant fatty liver phenotype' with preserved function across most systems — the liver is declaring the biology before the blood sugar, making this the ideal window for correction"
-- Optimal: "This is a 'resilient low-risk phenotype' with excellent metabolic reserve"]
+[One powerful phenotype summary line that is proportionate to severity. Examples:
+- Severe case: "This is a high-risk metabolic inflammatory phenotype with strong reversibility potential through aggressive intervention"
+- Moderate case: "This is an early insulin-resistant fatty liver phenotype that is highly reversible — he is before overt diabetes and before advanced fibrosis, making this the right moment for correction"
+- Mild case: "This is a near-optimal longevity profile with minor metabolic optimization opportunities"]
 
 ---
 
@@ -585,24 +528,24 @@ LONGEVITY_REPORT_USER_PROMPT_TEMPLATE = """Generate the VYTALYOU™ ULTRA PRECIS
 MANDATORY CHECKLIST (verify ALL before completing):
 1. Deep-scanned RAW TEXT line by line — extracted EVERY metric including ESR, platelets, morphology, homocysteine, IgE, fat fraction, all CBC, all lipid ratios
 2. Filled ALL 16 sections with real patient data
-3. Assigned PROPORTIONAL severity grade that ACCURATELY matches the clinical picture:
-   - Truly severe multi-system disease (overt diabetes + active inflammation + organ damage) → Grade D/D+
-   - Early/mild metabolic deviation with strong protective factors → Grade C+ or C
-   - DO NOT over-grade patients with preserved HbA1c, low inflammation, preserved cardiac/renal function, and good muscle mass
-4. Calculated PROPORTIONAL biological age drift:
-   - Severe disease → +15 to +25 years
-   - Early/mild disease with protective factors → +4 to +10 years
-   - DO NOT give +15-20 years drift when HbA1c is normal and inflammation is low
-5. Calculated PROPORTIONAL longevity score:
-   - Severe disease → 25-40
-   - Early/mild disease with strong protective factors → 55-70
-   - DO NOT score 38/100 when multiple systems are preserved and strong
-6. Showed ROOT CAUSE CHAIN with causality — using PROPORTIONAL severity language
-7. Assigned specific clinical phenotype that MATCHES actual severity (not catastrophic language for mild cases)
-8. Provided BALANCED AHA/ASCVD risk interpretation acknowledging both risk factors AND protective factors
+3. Assigned a PROPORTIONATE severity grade that reflects BOTH disease burden AND protective factors:
+   - Consider what IS wrong AND what is preserved/strong
+   - A patient with moderate insulin resistance but preserved HbA1c, low inflammation, and good muscle = C+ range, NOT D+
+   - A patient with overt diabetes, severe inflammation, and multi-organ damage = D/D+
+4. Calculated PROPORTIONATE biological age drift based on actual clinical severity:
+   - Moderate metabolic disease with protective factors = +6 to +12 years
+   - Severe multi-system disease = +15 to +25 years
+   - Do NOT apply severe-disease drift to moderate-disease patients
+5. Calculated PROPORTIONATE longevity score:
+   - Score each domain independently — preserved domains should score high (75-90)
+   - Severely affected domains should score low (25-45)
+   - Composite reflects balanced clinical picture
+6. Showed ROOT CAUSE CHAIN with causality
+7. Assigned specific clinical phenotype that reflects BOTH risks and preserved strengths
+8. Provided VYTALYOU-adjusted ASCVD risk with honest, proportionate clinical framing
 9. Included reversibility projection with timeline
 10. Every abnormal value has a reference range and specific clinical meaning
-11. EQUALLY IMPORTANT: Every NORMAL/REASSURING value should be acknowledged as a strength, not ignored
+11. NO generic filler text — every sentence adds clinical value
 12. Organized Executive Summary by SYSTEM, not as a generic table
-13. PROTECTIVE FACTORS CHECK: Before finalizing the grade/score/bio-age, verify: Are HbA1c, hsCRP, ESR, EF, eGFR, muscle mass reassuring? If YES, these MUST moderate the severity assessment downward."""
-
+13. ACKNOWLEDGED ALL PROTECTIVE FACTORS — do not minimize or ignore preserved function
+14. Used clinically precise language — avoid catastrophizing mild/moderate findings"""
