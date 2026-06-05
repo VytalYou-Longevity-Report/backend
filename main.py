@@ -8,7 +8,7 @@ import uuid
 import shutil
 from typing import Optional
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, Form, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
@@ -22,9 +22,10 @@ from models.schemas import (
 )
 from services.pdf_extractor import pdf_extractor
 from services.metrics import metrics_calculator
-from services.llm_engine import llm_engine
+from services.llm_engine import llm_engine, AVAILABLE_MODELS, DEFAULT_MODEL, get_provider
 from services.risk_engine import risk_engine
 from services.pdf_generator import pdf_generator
+from services.anthropic_pdf_generator import anthropic_pdf_generator
 from routers.upload import router as upload_router
 
 load_dotenv()
@@ -145,7 +146,7 @@ async def extract_data(session_id: str):
 
 
 @app.post("/api/analyze/{session_id}", response_model=AnalysisResponse)
-async def analyze(session_id: str):
+async def analyze(session_id: str, model: Optional[str] = None):
     """Stage 3+: Generate LLM-based longevity report and physician sheet."""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found.")
@@ -157,8 +158,15 @@ async def analyze(session_id: str):
     data = session["extracted_data"]
     metrics = session["derived_metrics"]
 
+    # Resolve model: param > session > default
+    resolved_model = model or session.get("model") or DEFAULT_MODEL
+    session["model"] = resolved_model
+    session["provider"] = get_provider(resolved_model)
+
     # Stage 3: LLM Analysis
-    report, physician_sheet = await llm_engine.generate_full_analysis(data, metrics)
+    report, physician_sheet = await llm_engine.generate_full_analysis(
+        data, metrics, model=resolved_model
+    )
 
     # Stage 4: Risk Projections
     risk_projection = risk_engine.compute_projections(data, metrics)
@@ -177,14 +185,18 @@ async def analyze(session_id: str):
 
 
 @app.post("/api/full-report/{session_id}", response_model=FullReportResponse)
-async def full_report(session_id: str):
+async def full_report(session_id: str, model: Optional[str] = None):
     """Run the complete pipeline: extract → compute → analyze → report."""
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found.")
 
+    # Store model choice in session for downstream use
+    if model:
+        sessions[session_id]["model"] = model
+
     # Run extraction
     await extract_data(session_id)
-    # Run analysis
+    # Run analysis (passes model through session)
     await analyze(session_id)
 
     session = sessions[session_id]
@@ -209,16 +221,42 @@ async def get_report_html(session_id: str):
     if "report" not in session:
         raise HTTPException(status_code=400, detail="Report not generated yet. Run full-report first.")
 
-    html = pdf_generator.generate_report_html(
-        report=session["report"],
-        physician_sheet=session["physician_sheet"],
-        risk_projection=session["risk_projection"],
-        patient_data=session["extracted_data"],
-        derived_metrics=session["derived_metrics"],
-        session_id=session_id,
-    )
+    if session.get("provider") == "anthropic":
+        import json
+        import re
+        try:
+            # Clean trailing commas which often cause json.loads to fail
+            raw_json = session["report"].markdown
+            raw_json = re.sub(r',\s*([\]}])', r'\1', raw_json)
+            json_data = json.loads(raw_json)
+            html = anthropic_pdf_generator.generate_report_html(json_data, session_id)
+        except json.JSONDecodeError as e:
+            html = f"<h3>JSON Parse Error</h3><p>{str(e)}</p><pre>{session['report'].markdown}</pre>"
+        except Exception as e:
+            html = f"<h3>Rendering Error</h3><p>{str(e)}</p>"
+    else:
+        html = pdf_generator.generate_report_html(
+            report=session["report"],
+            physician_sheet=session["physician_sheet"],
+            risk_projection=session["risk_projection"],
+            patient_data=session["extracted_data"],
+            derived_metrics=session["derived_metrics"],
+            session_id=session_id,
+        )
 
     return HTMLResponse(content=html)
+
+
+@app.get("/api/models")
+async def list_models():
+    """Return the list of available LLM models for the frontend selector."""
+    return {
+        "models": [
+            {"id": mid, "label": info["label"], "provider": info["provider"]}
+            for mid, info in AVAILABLE_MODELS.items()
+        ],
+        "default": DEFAULT_MODEL,
+    }
 
 
 @app.post("/api/process-all")
@@ -226,19 +264,24 @@ async def process_all(
     laboratory_report: UploadFile = File(None),
     radiology_report: UploadFile = File(None),
     excel_report: UploadFile = File(None),
+    model: Optional[str] = Form(None),
 ):
     """Unified endpoint: Upload → Extract → Analyze in one sequence."""
     # 1. Upload
     upload_res = await upload_reports(laboratory_report, radiology_report, excel_report)
     session_id = upload_res.session_id
-    
-    # 2. Run Pipeline
+
+    # 2. Store model choice
+    if model:
+        sessions[session_id]["model"] = model
+
+    # 3. Run Pipeline
     report_data = await full_report(session_id)
-    
-    # 3. Add PDF URL for direct frontend use
+
+    # 4. Add PDF URL for direct frontend use
     report_data = report_data.dict()
     base_url = os.getenv("API_BASE_URL", "https://api2.vytalyou.com")
     report_data["pdf_url"] = f"{base_url}/api/report/{session_id}/html"
-    
+
     return report_data
 
