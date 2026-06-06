@@ -255,9 +255,9 @@ class LLMEngine:
 
             raw_a, raw_b = await asyncio.gather(
                 self._chat(model=model, system=system_a, user=CLAUDE_REPORT_PART_A_USER,
-                           max_tokens=8192, temperature=0.3, json_mode=True),
+                           max_tokens=4096, temperature=0.3, json_mode=True),
                 self._chat(model=model, system=system_b, user=CLAUDE_REPORT_PART_B_USER,
-                           max_tokens=8192, temperature=0.3, json_mode=True),
+                           max_tokens=4096, temperature=0.3, json_mode=True),
             )
 
             logger.info(f"[LLM] Part A: {len(raw_a)} chars, Part B: {len(raw_b)} chars")
