@@ -194,21 +194,28 @@ async def full_report(session_id: str, model: Optional[str] = None):
     if model:
         sessions[session_id]["model"] = model
 
-    # Run extraction
-    await extract_data(session_id)
-    # Run analysis (passes model through session)
-    await analyze(session_id)
+    try:
+        # Run extraction
+        await extract_data(session_id)
+        # Run analysis (passes model through session)
+        await analyze(session_id)
 
-    session = sessions[session_id]
+        session = sessions[session_id]
 
-    return FullReportResponse(
-        session_id=session_id,
-        report=session["report"],
-        risk_projection=session["risk_projection"],
-        physician_sheet=session["physician_sheet"],
-        extracted_data=session["extracted_data"],
-        derived_metrics=session["derived_metrics"],
-    )
+        return FullReportResponse(
+            session_id=session_id,
+            report=session["report"],
+            risk_projection=session["risk_projection"],
+            physician_sheet=session["physician_sheet"],
+            extracted_data=session["extracted_data"],
+            derived_metrics=session["derived_metrics"],
+        )
+    except HTTPException:
+        raise  # Re-raise FastAPI HTTP exceptions as-is
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Pipeline error: {type(e).__name__}: {str(e)}")
 
 
 @app.get("/api/report/{session_id}/html", response_class=HTMLResponse)

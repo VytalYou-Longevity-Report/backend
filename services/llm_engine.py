@@ -142,7 +142,7 @@ class LLMEngine:
         model: str,
         system: str,
         user: str,
-        max_tokens: int = 16000,
+        max_tokens: int = 4096,
         temperature: float = 0.3,
         json_mode: bool = False,
     ) -> str:
@@ -162,36 +162,77 @@ class LLMEngine:
         MAX_CONTINUATIONS = 5
 
         # Map friendly UI names to actual Anthropic API model IDs
-        real_model_id = model
-        if model == "claude-sonnet-4-5" or model == "claude-sonnet-3-5":
-            real_model_id = "claude-3-5-sonnet-20240620"
-        elif model == "claude-opus-4-5":
-            real_model_id = "claude-3-opus-20240229"
-        elif model == "claude-haiku-3-5":
-            real_model_id = "claude-3-haiku-20240307"
+        # Try multiple ID formats — Anthropic changed naming in 2025
+        MODEL_ALIASES = {
+            "claude-sonnet-4-5": [
+                "claude-sonnet-4-5-20250514",
+                "claude-4-5-sonnet",
+                "claude-3-5-sonnet-20241022",
+                "claude-3-5-sonnet-20240620",
+            ],
+            "claude-sonnet-3-5": [
+                "claude-3-5-sonnet-20241022",
+                "claude-3-5-sonnet-20240620",
+            ],
+            "claude-opus-4-5": [
+                "claude-opus-4-5-20250514",
+                "claude-3-opus-20240229",
+            ],
+            "claude-haiku-3-5": [
+                "claude-haiku-3-5-20250514",
+                "claude-3-5-haiku-20241022",
+                "claude-3-haiku-20240307",
+            ],
+        }
 
-        for attempt in range(MAX_CONTINUATIONS + 1):
-            response = await client.messages.create(
-                model=real_model_id,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                system=system,
-                messages=messages,
-            )
-            chunk = response.content[0].text if response.content else ""
-            full_text += chunk
+        # Build the list of model IDs to try
+        candidates = MODEL_ALIASES.get(model, [model])
+        # Always try the raw model name first (it might be a valid alias already)
+        if model not in candidates:
+            candidates = [model] + candidates
 
-            # Check if the response completed naturally
-            if response.stop_reason != "max_tokens":
-                logger.info(f"[LLM] Anthropic response complete (stop_reason={response.stop_reason}, total={len(full_text)} chars)")
-                break
+        logger.info(f"[LLM] Anthropic model candidates: {candidates}")
 
-            # Response was truncated — ask Claude to continue
-            logger.warning(f"[LLM] Anthropic response truncated at max_tokens (attempt {attempt+1}, {len(full_text)} chars so far). Continuing...")
-            messages.append({"role": "assistant", "content": chunk})
-            messages.append({"role": "user", "content": "Continue generating the JSON from exactly where you stopped. Do not repeat any previous content. Output only the remaining JSON text."})
+        last_error = None
+        for candidate_id in candidates:
+            try:
+                logger.info(f"[LLM] Trying Anthropic model: {candidate_id}")
+                for attempt in range(MAX_CONTINUATIONS + 1):
+                    response = await client.messages.create(
+                        model=candidate_id,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        system=system,
+                        messages=messages,
+                    )
+                    chunk = response.content[0].text if response.content else ""
+                    full_text += chunk
 
-        return full_text
+                    # Check if the response completed naturally
+                    if response.stop_reason != "max_tokens":
+                        logger.info(f"[LLM] Anthropic response complete (model={candidate_id}, stop_reason={response.stop_reason}, total={len(full_text)} chars)")
+                        return full_text
+
+                    # Response was truncated — ask Claude to continue
+                    logger.warning(f"[LLM] Anthropic response truncated at max_tokens (attempt {attempt+1}, {len(full_text)} chars so far). Continuing...")
+                    messages.append({"role": "assistant", "content": chunk})
+                    messages.append({"role": "user", "content": "Continue generating the JSON from exactly where you stopped. Do not repeat any previous content. Output only the remaining JSON text."})
+
+                return full_text  # All continuations done
+
+            except Exception as e:
+                last_error = e
+                logger.warning(f"[LLM] Model '{candidate_id}' failed: {type(e).__name__}: {e}")
+                # Reset state for next candidate
+                full_text = ""
+                messages = [{"role": "user", "content": user}]
+                continue
+
+        # All candidates failed
+        error_msg = f"All Anthropic model IDs failed. Last error: {last_error}"
+        logger.error(f"[LLM] {error_msg}")
+        raise Exception(error_msg)
+
 
     # ─── Unified Dispatcher ──────────────────────────────────────────────────
 
