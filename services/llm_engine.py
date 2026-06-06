@@ -164,11 +164,11 @@ class LLMEngine:
         # Map friendly UI names to actual Anthropic API model IDs
         real_model_id = model
         if model == "claude-sonnet-4-5" or model == "claude-sonnet-3-5":
-            real_model_id = "claude-3-5-sonnet-20241022"
+            real_model_id = "claude-3-5-sonnet-20240620"
         elif model == "claude-opus-4-5":
             real_model_id = "claude-3-opus-20240229"
         elif model == "claude-haiku-3-5":
-            real_model_id = "claude-3-5-haiku-20241022"
+            real_model_id = "claude-3-haiku-20240307"
 
         for attempt in range(MAX_CONTINUATIONS + 1):
             response = await client.messages.create(
