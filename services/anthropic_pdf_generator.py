@@ -2,6 +2,8 @@
 VYTALYOU™ Anthropic Claude A4 HTML Generator
 Renders the premium 11-page A4 longevity report from Claude's structured JSON output.
 Matches the design system of Vytalyou_Vivek_Kishore_A4_Final_2.html exactly.
+Supports new schema: flexible cover, split lab pages (4A/4B), imaging subsections,
+IV phases, AHA patient-specific context.
 """
 from __future__ import annotations
 import json
@@ -249,16 +251,41 @@ body{background:#C8C2B8;font-family:'DM Sans',sans-serif;color:var(--text);
 .div{height:1px;background:var(--cream-deep);margin:9px 0;}
 .mt8{margin-top:8px;}.mt9{margin-top:9px;}.mt10{margin-top:10px;}
 .mb8{margin-bottom:8px;}.mb9{margin-bottom:9px;}.mb10{margin-bottom:10px;}
+.phase-card{background:var(--white);border:1px solid var(--border);border-left:3px solid var(--teal);
+    border-radius:3px;padding:8px 12px;box-shadow:var(--shadow);}
+.phase-lbl{font-family:'DM Mono',monospace;font-size:8px;color:var(--teal);font-weight:600;
+    letter-spacing:0.12em;text-transform:uppercase;margin-bottom:3px;}
+.phase-txt{font-size:9px;color:var(--text-mid);line-height:1.5;}
+.img-card{background:var(--white);border:1px solid var(--border);border-radius:3px;
+    padding:8px 11px;box-shadow:var(--shadow);margin-bottom:7px;}
+.img-card-title{font-size:7px;letter-spacing:0.2em;text-transform:uppercase;
+    color:var(--gold);font-weight:600;margin-bottom:5px;}
+.img-impression{font-size:9px;color:var(--navy);font-weight:600;margin-top:5px;line-height:1.45;}
 .no-print{display:none;}
 @media print{
   @page{size:A4 portrait;margin:0;}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
   html,body{background:#fff!important;margin:0;padding:0;}
-  .pg{width:210mm;height:297mm;min-height:unset;
-      margin:0!important;box-shadow:none!important;
-      page-break-after:always;overflow:hidden;padding:10mm 13mm 0 13mm;}
-  .pg:last-child{page-break-after:auto;}
-  .pf{padding-bottom:8mm;}
+  .pg{
+    width:210mm;
+    min-height:297mm;
+    height:auto;
+    margin:0!important;
+    box-shadow:none!important;
+    break-before:page;
+    page-break-before:always;
+    overflow:visible;
+    padding:10mm 13mm 0 13mm;
+  }
+  .pg:first-child{break-before:auto;page-break-before:auto;}
+  .pg:last-child{break-after:auto;page-break-after:auto;}
+  /* Prevent cards splitting mid-content */
+  .card,.rc,.iv,.img-card,.phase-card,.hsc,.sr,.sig,.disc,.ib{
+    break-inside:avoid;page-break-inside:avoid;
+  }
+  /* Keep section headers with their first content block */
+  .sh{break-after:avoid;page-break-after:avoid;}
+  .pf{padding-bottom:8mm;break-inside:avoid;page-break-inside:avoid;}
   .no-print{display:none!important;}
 }
 """
@@ -320,12 +347,15 @@ def _page_cover(d: dict) -> list[str]:
     bio_age = _e(c.get("biological_age", ""))
     bio_drift = _e(c.get("biological_age_drift", ""))
     bio_drivers = _e(c.get("biological_age_drivers", ""))
-    lpa_val = _e(c.get("lpa_value", ""))
-    lpa_label = _e(c.get("lpa_label", "Lp(a) · Critical"))
-    lpa_note = _e(c.get("lpa_note", ""))
     hs_gain = _e(c.get("healthspan_gain", ""))
     hs_note = _e(c.get("healthspan_note", ""))
     flags = c.get("key_flags", [])
+
+    # ── Flexible 3rd cover cell: try new primary_concern_* fields first,
+    # fall back to legacy lpa_* fields for backward compatibility
+    pc_label = _e(c.get("primary_concern_label") or c.get("lpa_label", "Primary Concern"))
+    pc_value = _e(c.get("primary_concern_value") or c.get("lpa_value", ""))
+    pc_note = _e(c.get("primary_concern_note") or c.get("lpa_note", ""))
 
     flags_html = "".join(
         f'<span style="font-size:8px;letter-spacing:0.1em;text-transform:uppercase;padding:3px 9px;border-radius:2px;border:1px solid rgba(184,133,30,0.22);color:var(--gold);background:rgba(184,133,30,0.05);">{_e(f)}</span>'
@@ -351,7 +381,7 @@ def _page_cover(d: dict) -> list[str]:
   <div class="ss">
    <div class="sc"><div class="scl">Overall Longevity Score</div><div class="scv a">{ls}<span style="font-size:14px;color:var(--text-muted);">/100</span></div><div class="scn">{ls_label}</div></div>
    <div class="sc"><div class="scl">Biological Age (Estimated)</div><div class="scv r">{bio_age} <span style="font-size:12px;color:var(--text-muted);">yrs ({bio_drift})</span></div><div class="scn">{bio_drivers}</div></div>
-   <div class="sc"><div class="scl">{lpa_label}</div><div class="scv r">{lpa_val}</div><div class="scn">{lpa_note}</div></div>
+   <div class="sc"><div class="scl">{pc_label}</div><div class="scv r">{pc_value}</div><div class="scn">{pc_note}</div></div>
    <div class="sc"><div class="scl">Potential Healthspan Gain</div><div class="scv n">{hs_gain}</div><div class="scn">{hs_note}</div></div>
   </div>
   <div class="pts">
@@ -389,7 +419,6 @@ def _page_executive_summary(d: dict) -> list[str]:
 
     cascade = _e(es.get("cascade_text", ""))
     key_flags = _e(es.get("key_flags_text", ""))
-
     section_tag = _e(es.get("section_tag", "AHA 2026 · Integrated Analysis"))
 
     return [f"""<div class="pg">
@@ -403,7 +432,7 @@ def _page_executive_summary(d: dict) -> list[str]:
     <div style="display:flex;flex-direction:column;gap:5px;font-size:9.5px;color:var(--text-mid);">{crit_html}</div>
    </div>
    <div>
-    <div class="rl" style="color:var(--green);">Excellent Protective Results</div>
+    <div class="rl" style="color:var(--green);">Protective &amp; Reassuring Results</div>
     <div style="display:flex;flex-direction:column;gap:5px;font-size:9.5px;color:var(--text-mid);">{prot_html}</div>
    </div>
   </div>
@@ -454,9 +483,10 @@ def _page_risk_radar_inbody(d: dict) -> list[str]:
     for seg in ib.get("segmental", []):
         pct = seg.get("percent", 0)
         bar_col = "var(--amber)" if pct < 100 else "var(--green)"
+        warn_sym = " ⚠" if pct < 100 else " ✓"
         seg_html += f"""<tr><td style="color:var(--text-muted);padding:3px 0;width:130px;">{_e(seg.get("segment",""))} ({_e(seg.get("value",""))})</td>
-   <td><div class="sbt"><div class="sbf" style="width:{pct}%;background:{bar_col};"></div></div></td>
-   <td style="text-align:right;color:var(--amber);font-weight:600;padding-left:7px;">{pct}% ⚠</td></tr>"""
+   <td><div class="sbt"><div class="sbf" style="width:{min(pct,100)}%;background:{bar_col};"></div></div></td>
+   <td style="text-align:right;color:var(--amber);font-weight:600;padding-left:7px;">{pct}%{warn_sym}</td></tr>"""
 
     # Key params
     kp_html = ""
@@ -475,8 +505,8 @@ def _page_risk_radar_inbody(d: dict) -> list[str]:
     muscle_ctrl = _e(ib.get("muscle_control", ""))
     tgt_wt = _e(ib.get("target_weight", ""))
 
-    rr_tag = _e(ib.get("risk_radar_tag", d.get("risk_radar_tag", "AHA 2026 · Multi-Domain Risk Assessment")))
-    ib_tag = _e(ib.get("inbody_tag", "InBody 970S · Sarcopenic Obesity · Body Composition"))
+    seg_note = ib.get("segmental_note", "Segmental lean mass distribution — review each segment.")
+    rr_tag = _e(d.get("risk_radar_tag", "AHA 2026 · Multi-Domain Risk Assessment"))
 
     return [f"""<div class="pg">
  <div class="pg-body">
@@ -484,101 +514,173 @@ def _page_risk_radar_inbody(d: dict) -> list[str]:
   <div class="sh"><div class="sn">02</div><div><div class="st">Longevity Risk Radar</div><div class="stg"><span class="stag">{rr_tag}</span></div></div></div>
   <div class="g3 mb9">{rr_html}</div>
   <div class="div"></div>
-  <div class="sh" style="margin-bottom:8px;"><div class="sn">03</div><div><div class="st">Body Composition Analysis</div><div class="stg"><span class="stag">InBody 970S · {ib_date} · {ib_tag}</span></div></div></div>
+  <div class="sh" style="margin-bottom:8px;"><div class="sn">03</div><div><div class="st">Body Composition Analysis</div><div class="stg"><span class="stag">InBody 970S · {ib_date} · Body Composition</span></div></div></div>
   <div class="g4 mb9">{ib_cells}</div>
   <div class="g2">
    <div class="card">
-    <div style="font-weight:600;font-size:10.5px;color:var(--navy);margin-bottom:7px;">Segmental Lean Mass — All Segments Below 100%</div>
+    <div style="font-weight:600;font-size:10.5px;color:var(--navy);margin-bottom:7px;">Segmental Lean Mass</div>
     <table style="width:100%;font-size:9.5px;">{seg_html}</table>
-    <div style="font-size:8.5px;color:var(--amber);margin-top:5px;">All segments below 100% — confirmed sarcopenic obesity. Both fat loss AND muscle gain required.</div>
+    <div style="font-size:8.5px;color:var(--text-muted);margin-top:5px;">{_e(seg_note)}</div>
    </div>
    <div class="card">
     <div style="font-weight:600;font-size:10.5px;color:var(--navy);margin-bottom:7px;">Key Research Parameters · InBody Score: {ib_score} · {ib_score_label}</div>
     <table style="width:100%;font-size:9.5px;">{kp_html}</table>
    </div>
   </div>
-  <div class="nb mt9" style="font-size:9px;"><strong>InBody Prescription — Dual Target (Unique in This Series):</strong> Target weight {tgt_wt}. Fat Control: <span class="hl">{fat_ctrl}</span>. Muscle Control: <span class="hl">{muscle_ctrl}</span>. {presc}</div>
+  <div class="nb mt9" style="font-size:9px;"><strong>InBody Prescription:</strong> Target weight {tgt_wt}. Fat Control: <span class="hl">{fat_ctrl}</span>. Muscle Control: <span class="hl">{muscle_ctrl}</span>. {presc}</div>
  </div>
  {_footer(name)}
 </div>"""]
 
-def _page_lab_results(d: dict) -> list[str]:
+def _page_lab_results_a(d: dict) -> list[str]:
+    """Page 4A — Abnormal & Critical lab findings."""
     p = d.get("patient", {})
-    lr = d.get("lab_results", {})
+    lr = d.get("lab_results_a", d.get("lab_results", {}))
     name = _e(p.get("name", ""))
 
     abnormal = lr.get("abnormal", [])
-    protective = lr.get("protective", [])
+    section_tag = _e(lr.get("section_tag", "Abnormal & Attention Findings · Clinical Significance"))
+    reading_note = _e(lr.get("reading_note", ""))
 
     pages = []
-    
-    # Combine all lab results into a single list of HTML row blocks
     html_rows = []
-    
-    if abnormal:
-        html_rows.append(f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;margin-top:10px;"><div style="width:6px;height:6px;border-radius:50%;background:var(--red);"></div><span style="font-size:8px;letter-spacing:0.12em;text-transform:uppercase;color:var(--red);font-weight:600;">Abnormal / Critical Results</span></div>')
-        html_rows.append('<div style="overflow:hidden;border-radius:3px;border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:10px;"><table class="dt"><thead><tr><th style="width:130px;">Test</th><th style="width:110px;">Result</th><th style="width:100px;">Reference</th><th style="width:80px;">Flag</th><th>Clinical Significance</th></tr></thead><tbody>')
-        for r in abnormal:
-            res_col_map = {"critical": "vr", "high": "vr", "low": "vt", "normal": "vg", "borderline": "va", "optimal": "vg"}
-            rc = res_col_map.get(r.get("result_status", ""), "va")
-            html_rows.append(f"""<tr>
+
+    html_rows.append(f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;"><div style="width:6px;height:6px;border-radius:50%;background:var(--red);"></div><span style="font-size:8px;letter-spacing:0.12em;text-transform:uppercase;color:var(--red);font-weight:600;">Abnormal / Critical Results</span></div>')
+    html_rows.append('<div style="overflow:hidden;border-radius:3px;border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:10px;"><table class="dt"><thead><tr><th style="width:130px;">Test</th><th style="width:110px;">Result</th><th style="width:100px;">Reference</th><th style="width:80px;">Flag</th><th>Clinical Significance</th></tr></thead><tbody>')
+    for r in abnormal:
+        res_col_map = {"critical": "vr", "high": "vr", "low": "vt", "normal": "vg", "borderline": "va", "optimal": "vg"}
+        rc = res_col_map.get(r.get("result_status", ""), "va")
+        html_rows.append(f"""<tr>
   <td><strong>{_e(r.get("test",""))}</strong></td>
   <td><span class="{rc}">{_e(r.get("result",""))}</span></td>
   <td class="vn">{_e(r.get("reference",""))}</td>
   <td><span class="flag {_flag_class(r.get('flag_type','H'))}">{_e(r.get("flag",""))}</span></td>
   <td>{_e(r.get("clinical_significance",""))}</td></tr>""")
-        html_rows.append('</tbody></table></div>')
+    html_rows.append('</tbody></table></div>')
 
-    if protective:
-        html_rows.append(f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;margin-top:10px;"><div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div><span style="font-size:8px;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);font-weight:600;">Excellent Protective Results</span></div>')
-        html_rows.append('<div style="overflow:hidden;border-radius:3px;border:1px solid var(--border);box-shadow:var(--shadow);"><table class="dt"><thead><tr><th style="width:130px;">Test</th><th style="width:130px;">Result</th><th style="width:80px;">Status</th><th>Why This Matters</th></tr></thead><tbody>')
-        for r in protective:
-            html_rows.append(f"""<tr>
-  <td><strong>{_e(r.get("test",""))}</strong></td>
-  <td><span class="vg">{_e(r.get("result",""))}</span></td>
-  <td><span class="flag G">{_e(r.get("status_label","Excellent"))}</span></td>
-  <td>{_e(r.get("why_matters",""))}</td></tr>""")
-        html_rows.append('</tbody></table></div>')
+    if reading_note:
+        html_rows.append(f'<div class="co" style="font-size:9px;"><strong>Reading Part A.</strong> {reading_note}</div>')
 
-    # Split rows into chunks to avoid long pages overflowing
-    MAX_ROWS_PER_PAGE = 22
+    MAX_ROWS_PER_PAGE = 20
     for i in range(0, len(html_rows), MAX_ROWS_PER_PAGE):
         chunk = html_rows[i:i + MAX_ROWS_PER_PAGE]
         content = "".join(chunk)
         pages.append(f"""<div class="pg">
  <div class="pg-body">
   {_page_header(p)}
-  <div class="sh"><div class="sn">04</div><div><div class="st">Laboratory Results</div><div class="stg"><span class="stag">Flagged · AHA 2026 · Male Reference Ranges</span></div></div></div>
+  <div class="sh"><div class="sn">04</div><div><div class="st">Laboratory Analysis — Part A</div><div class="stg"><span class="stag">{section_tag}</span></div></div></div>
   {content}
  </div>
  {_footer(name)}
 </div>""")
-        
+
     return pages if pages else [f"""<div class="pg">
  <div class="pg-body">
   {_page_header(p)}
-  <div class="sh"><div class="sn">04</div><div><div class="st">Laboratory Results</div><div class="stg"><span class="stag">Flagged · AHA 2026 · Male Reference Ranges</span></div></div></div>
-  <div style="font-size:9px;color:var(--text-mid);margin-top:20px;">No specific lab results reported in this section.</div>
+  <div class="sh"><div class="sn">04</div><div><div class="st">Laboratory Analysis — Part A</div><div class="stg"><span class="stag">{section_tag}</span></div></div></div>
+  <div style="font-size:9px;color:var(--text-mid);margin-top:20px;">No abnormal lab results reported.</div>
  </div>
  {_footer(name)}
 </div>"""]
+
+def _page_lab_results_b(d: dict) -> list[str]:
+    """Page 4B — Protective & Normal lab findings."""
+    p = d.get("patient", {})
+    # Support both new schema (lab_results_b) and old schema (lab_results.protective)
+    lr_b = d.get("lab_results_b", {})
+    lr_old = d.get("lab_results", {})
+    name = _e(p.get("name", ""))
+
+    protective = lr_b.get("protective", lr_old.get("protective", []))
+    section_tag = _e(lr_b.get("section_tag", "Protective & Normal Results · What Is Working"))
+    reading_note = _e(lr_b.get("reading_note", ""))
+
+    if not protective:
+        return []
+
+    pages = []
+    html_rows = []
+
+    html_rows.append(f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;"><div style="width:6px;height:6px;border-radius:50%;background:var(--green);"></div><span style="font-size:8px;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);font-weight:600;">Protective &amp; Normal Results</span></div>')
+    html_rows.append('<div style="overflow:hidden;border-radius:3px;border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:10px;"><table class="dt"><thead><tr><th style="width:130px;">Parameter</th><th style="width:130px;">Result</th><th style="width:80px;">Status</th><th>What It Tells Us</th></tr></thead><tbody>')
+    for r in protective:
+        html_rows.append(f"""<tr>
+  <td><strong>{_e(r.get("test",""))}</strong></td>
+  <td><span class="vg">{_e(r.get("result",""))}</span></td>
+  <td><span class="flag G">{_e(r.get("status_label","Normal"))}</span></td>
+  <td>{_e(r.get("why_matters",""))}</td></tr>""")
+    html_rows.append('</tbody></table></div>')
+
+    if reading_note:
+        html_rows.append(f'<div class="co navy" style="font-size:9px;"><strong>Reading Part B.</strong> {reading_note}</div>')
+
+    MAX_ROWS_PER_PAGE = 20
+    for i in range(0, len(html_rows), MAX_ROWS_PER_PAGE):
+        chunk = html_rows[i:i + MAX_ROWS_PER_PAGE]
+        content = "".join(chunk)
+        pages.append(f"""<div class="pg">
+ <div class="pg-body">
+  {_page_header(p)}
+  <div class="sh"><div class="sn">04</div><div><div class="st">Laboratory Analysis — Part B</div><div class="stg"><span class="stag">{section_tag}</span></div></div></div>
+  {content}
+ </div>
+ {_footer(name)}
+</div>""")
+
+    return pages
 
 def _page_imaging(d: dict) -> list[str]:
     p = d.get("patient", {})
     img = d.get("imaging", {})
     name = _e(p.get("name", ""))
 
-    usg = img.get("usg", {})
-    cxr = img.get("cxr_ecg", {})
+    # ── New schema: subsections array ──────────────────────────────────────────
+    subsections = img.get("subsections", [])
     echo = img.get("echo", {})
+    ecg = img.get("ecg", {})
+    imaging_synthesis = _e(img.get("imaging_synthesis", ""))
 
-    usg_findings = usg.get("findings", [])
-    usg_rows = "".join(f'<div class="fr"><span class="ar">→</span><div>{_e(f)}</div></div>' for f in usg_findings)
-    usg_imp = _e(usg.get("impression", ""))
-
-    cxr_find = _e(cxr.get("cxr_findings", ""))
-    cxr_imp = _e(cxr.get("cxr_impression", ""))
-    ecg_find = _e(cxr.get("ecg_findings", ""))
+    # Build USG / radiology subsection cards
+    sub_html = ""
+    if subsections:
+        for sub in subsections:
+            findings = sub.get("findings", [])
+            findings_html = "".join(
+                f'<div class="fr"><span class="ar">→</span><div>{_e(f)}</div></div>'
+                for f in findings
+            )
+            impression = _e(sub.get("impression", ""))
+            sub_html += f"""<div class="img-card">
+  <div class="img-card-title">{_e(sub.get("title",""))}</div>
+  <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{findings_html}</div>
+  {f'<div class="img-impression">Impression: {impression}</div>' if impression else ""}
+</div>"""
+    else:
+        # Backward compat: fall back to old flat usg/cxr_ecg structure
+        usg = img.get("usg", {})
+        cxr = img.get("cxr_ecg", {})
+        usg_findings = usg.get("findings", [])
+        usg_rows = "".join(f'<div class="fr"><span class="ar">→</span><div>{_e(f)}</div></div>' for f in usg_findings)
+        usg_imp = _e(usg.get("impression", ""))
+        cxr_find = _e(cxr.get("cxr_findings", ""))
+        cxr_imp = _e(cxr.get("cxr_impression", ""))
+        ecg_find = _e(cxr.get("ecg_findings", ""))
+        sub_html = f"""<div class="img-card">
+  <div class="img-card-title">ABDOMINAL ULTRASOUND</div>
+  <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{usg_rows}</div>
+  <div class="img-impression">Impression: {usg_imp}</div>
+</div>
+<div class="g2 mb8">
+ <div class="img-card">
+  <div class="img-card-title">CHEST X-RAY</div>
+  <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{cxr_find}</div>
+  <div class="img-impression">Impression: {cxr_imp}</div>
+ </div>
+ <div class="img-card">
+  <div class="img-card-title">ECG</div>
+  <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{ecg_find}</div>
+ </div>
+</div>"""
 
     # Echo chips
     chip_class = {"green": "g", "red": "r", "amber": "w"}
@@ -593,45 +695,38 @@ def _page_imaging(d: dict) -> list[str]:
         for ep in echo_params
     )
     echo_imp = _e(echo.get("impression", ""))
-    aortic_box = _e(echo.get("aortic_sclerosis_box", ""))
+    cardiac_box = _e(echo.get("cardiac_special_box", echo.get("aortic_sclerosis_box", "")))
+
+    ecg_find = _e(ecg.get("findings", ""))
+    ecg_imp = _e(ecg.get("impression", ""))
+
+    synthesis_html = f'<div class="nb mt9" style="font-size:9px;"><strong>Two end-organ signals — both pointing back to the metabolic syndrome:</strong> {imaging_synthesis}</div>' if imaging_synthesis else ""
 
     return [f"""<div class="pg">
  <div class="pg-body">
   {_page_header(p)}
-  <div class="sh"><div class="sn">05</div><div><div class="st">Imaging &amp; Cardiac</div><div class="stg"><span class="stag">Ultrasound · CXR · ECG · 2D Echo</span></div></div></div>
+  <div class="sh"><div class="sn">05</div><div><div class="st">Imaging, Cardiac &amp; ECG</div><div class="stg"><span class="stag">USG Abdomen/Pelvis · Elastography · Carotid · 2D Echo · ECG</span></div></div></div>
   <div class="g2 mb9">
-   <div class="card">
-    <div class="ct">Abdominal Ultrasound</div>
-    <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{usg_rows}</div>
-    <div style="font-size:9px;color:var(--navy);font-weight:600;margin-top:5px;">Impression: {usg_imp}</div>
-   </div>
+   <div>{sub_html}</div>
    <div>
+    <div class="sh"><div class="sn">06</div><div><div class="st">2D Echocardiography</div><div class="stg"><span class="stag">LVEF · Wall Thickness · Diastolic Function · AHA 2026</span></div></div></div>
     <div class="card mb9">
-     <div class="ct">Chest X-Ray</div>
-     <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{cxr_find}</div>
-     <div style="font-size:9px;color:var(--navy);font-weight:600;margin-top:5px;">Impression: {cxr_imp}</div>
+     <div class="ct">Echo Parameters</div>
+     {chips_html}
+     <table style="width:100%;font-size:9.5px;margin-top:8px;">{param_rows}</table>
     </div>
-    <div class="card">
-     <div class="ct">ECG</div>
-     <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{ecg_find}</div>
-    </div>
-   </div>
-  </div>
-  <div class="sh"><div class="sn">06</div><div><div class="st">2D Echocardiography</div><div class="stg"><span class="stag">LVEF · Wall Thickness · Aortic Sclerosis · AHA 2026</span></div></div></div>
-  <div class="g2">
-   <div class="card">
-    <div class="ct">Echo Parameters</div>
-    {chips_html}
-    <table style="width:100%;font-size:9.5px;margin-top:8px;">{param_rows}</table>
-   </div>
-   <div>
     <div class="card mb9">
      <div class="ct">Echo Impression</div>
      <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{echo_imp}</div>
     </div>
-    <div class="co red" style="font-size:9px;"><strong>Aortic Sclerosis — Progression Risk:</strong> {aortic_box}</div>
+    <div class="card mb9">
+     <div class="ct">ECG</div>
+     <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{ecg_find} {ecg_imp}</div>
+    </div>
+    <div class="co red" style="font-size:9px;"><strong>Cardiac Finding — Clinical Significance:</strong> {cardiac_box}</div>
    </div>
   </div>
+  {synthesis_html}
  </div>
  {_footer(name)}
 </div>"""]
@@ -641,14 +736,13 @@ def _page_aha_risk(d: dict) -> list[str]:
     aha = d.get("aha_risk", {})
     name = _e(p.get("name", ""))
 
-    risk_lo = aha.get("risk_percent_low", 15)
-    risk_hi = aha.get("risk_percent_high", 20)
-    gauge_pct = aha.get("gauge_pct", 75)
+    risk_lo = aha.get("risk_percent_low", 3)
+    risk_hi = aha.get("risk_percent_high", 5)
     risk_label = _e(aha.get("risk_label", ""))
-    pce_text = _e(aha.get("pce_base_text", ""))
+    patient_context = _e(aha.get("patient_specific_context", aha.get("pce_base_text", "")))
     enhancers = aha.get("enhancers", [])
-    pcsk9 = _e(aha.get("pcsk9_text", ""))
-    statin = _e(aha.get("statin_text", ""))
+    one_lever = _e(aha.get("one_lever_text", aha.get("pcsk9_text", "")))
+    confirm_bp = _e(aha.get("confirm_bp_text", aha.get("statin_text", "")))
     strategy = _e(aha.get("strategy_text", ""))
 
     enh_html = "".join(f'<div class="fr"><span class="ar">→</span><div>{_e(e)}</div></div>' for e in enhancers)
@@ -656,33 +750,36 @@ def _page_aha_risk(d: dict) -> list[str]:
     return [f"""<div class="pg">
  <div class="pg-body">
   {_page_header(p)}
-  <div class="sh"><div class="sn">07</div><div><div class="st">AHA 2026 Cardiovascular Risk</div><div class="stg"><span class="stag">Lp(a) Critical · LVH · Aortic Sclerosis · PCSK9 Strategy</span></div></div></div>
-  <div style="display:flex; flex-direction:column; gap:9px; margin-bottom:9px;">
+  <div class="sh"><div class="sn">06</div><div><div class="st">Cardiovascular Risk — AHA 2026</div><div class="stg"><span class="stag">AHA PREVENT 2026 · 10-Year &amp; Lifetime ASCVD · Risk Enhancers</span></div></div></div>
+  <div class="g2 mb9">
    <div class="card">
-    <div class="ct">10-Year CV Risk Assessment</div>
-    <div class="rw">
-     <div style="text-align:center;">
-      <div class="gn">{risk_lo}–{risk_hi}<span class="gp">%</span></div>
-      <div class="gc">10-Year ASCVD Risk</div>
-      <div style="margin-top:5px;background:var(--red-bg);border:1px solid rgba(176,48,48,0.2);border-radius:2px;padding:4px 8px;font-size:7.5px;color:var(--red);font-weight:600;text-align:center;">{risk_label[:50]}</div>
-     </div>
-     <div>
-      <div style="font-size:8.5px;color:var(--text-mid);line-height:1.5;margin-bottom:6px;">{pce_text}</div>
-      <div class="rl">AHA 2026 Enhancers Present</div>
-      {enh_html}
-     </div>
+    <div class="ct">~{risk_lo}–{risk_hi}% 10-Year ASCVD Risk · AHA PREVENT 2026</div>
+    <div style="font-family:'Playfair Display',serif;font-size:32px;font-weight:400;color:var(--red);line-height:1;margin-bottom:5px;">{risk_lo}–{risk_hi}<span style="font-size:14px;color:var(--text-muted);">%</span></div>
+    <div style="font-size:7.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">10-Year ASCVD Risk · AHA PREVENT 2026</div>
+    <div style="background:var(--red-bg);border:1px solid rgba(176,48,48,0.2);border-radius:2px;padding:4px 8px;font-size:8px;color:var(--red);font-weight:600;margin-bottom:8px;display:inline-block;">{risk_label}</div>
+    <div style="font-size:9px;color:var(--text-mid);line-height:1.6;">{patient_context}</div>
+   </div>
+   <div>
+    <div class="card mb9">
+     <div class="ct">Risk Enhancers &amp; Modifiers</div>
+     {enh_html}
     </div>
    </div>
+  </div>
+  <div class="g3">
    <div class="card">
-    <div class="ct">PCSK9 Inhibitor Strategy</div>
-    <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{pcsk9}</div>
+    <div class="ct">End-Organ Change Already</div>
+    <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{one_lever}</div>
    </div>
    <div class="card">
-    <div class="ct">Statin + CoQ10 Mandate</div>
-    <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{statin}</div>
+    <div class="ct">Confirm the Blood Pressure</div>
+    <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{confirm_bp}</div>
+   </div>
+   <div class="card">
+    <div class="ct">One Lever, Many Wins</div>
+    <div style="font-size:9px;color:var(--text-mid);line-height:1.5;">{strategy}</div>
    </div>
   </div>
-  <div class="nb" style="font-size:9px;"><strong>AHA 2026 CV Risk Reduction Strategy:</strong> {strategy}</div>
  </div>
  {_footer(name)}
 </div>"""]
@@ -693,11 +790,10 @@ def _render_roadmap_section(s: dict) -> str:
     title = _e(s.get("title", ""))
     items = s.get("items", [])
     items_html = "".join(f'<div class="ri">{_e(item)}</div>' for item in items)
-    # Determine priority color
     p_lower = priority.lower()
-    if "week" in p_lower or "immediate" in p_lower or "urgent" in p_lower:
+    if "week" in p_lower or "immediate" in p_lower or "urgent" in p_lower or "1" in p_lower:
         badge_style = "background:var(--red-bg);color:var(--red);border:1px solid rgba(176,48,48,0.2);"
-    elif "month" in p_lower or "30" in p_lower:
+    elif "2" in p_lower or "month" in p_lower or "30" in p_lower:
         badge_style = "background:var(--amber-bg);color:var(--amber);border:1px solid rgba(200,125,30,0.22);"
     else:
         badge_style = "background:var(--teal-bg);color:var(--teal);border:1px solid rgba(24,112,104,0.18);"
@@ -714,24 +810,26 @@ def _page_roadmap(d: dict) -> list[str]:
     name = _e(p.get("name", ""))
 
     sections = rm.get("sections", [])
+    sequence_note = _e(rm.get("sequence_note", ""))
     pages = []
     MAX_SECTIONS_PER_PAGE = 4
-    
+
     for i in range(0, len(sections), MAX_SECTIONS_PER_PAGE):
         chunk = sections[i:i + MAX_SECTIONS_PER_PAGE]
-        
-        # Split chunk into two columns
         half = (len(chunk) + 1) // 2
         col1 = chunk[:half]
         col2 = chunk[half:]
-        
+
         col1_html = "".join(_render_roadmap_section(s) for s in col1)
         col2_html = "".join(_render_roadmap_section(s) for s in col2)
+
+        seq_html = f'<div class="co" style="font-size:9px;margin-bottom:8px;"><strong>Sequence matters.</strong> {sequence_note}</div>' if (i == 0 and sequence_note) else ""
 
         pages.append(f"""<div class="pg">
  <div class="pg-body">
   {_page_header(p)}
-  <div class="sh"><div class="sn">08</div><div><div class="st">Precision Longevity Roadmap</div><div class="stg"><span class="stag">Priority-Sequenced · Evidence-Based · AHA 2026</span></div></div></div>
+  <div class="sh"><div class="sn">07</div><div><div class="st">Prioritised Action Roadmap</div><div class="stg"><span class="stag">Priority 1 — Act Now · Priority 2 — Clarify &amp; Support</span></div></div></div>
+  {seq_html}
   <div class="g2">
    <div>{col1_html}</div>
    <div>{col2_html}</div>
@@ -744,7 +842,7 @@ def _page_roadmap(d: dict) -> list[str]:
         pages.append(f"""<div class="pg">
  <div class="pg-body">
   {_page_header(p)}
-  <div class="sh"><div class="sn">08</div><div><div class="st">Precision Longevity Roadmap</div><div class="stg"><span class="stag">Priority-Sequenced · Evidence-Based · AHA 2026</span></div></div></div>
+  <div class="sh"><div class="sn">07</div><div><div class="st">Prioritised Action Roadmap</div><div class="stg"><span class="stag">Priority-Sequenced · Evidence-Based · AHA 2026</span></div></div></div>
   <div style="font-size:9px;color:var(--text-mid);">No roadmap sections generated.</div>
  </div>
  {_footer(name)}
@@ -761,11 +859,22 @@ def _page_iv_protocol(d: dict) -> list[str]:
     orals = iv.get("oral_supplements", [])
     rationale = _e(iv.get("rationale", ""))
     exclusions = _e(iv.get("exclusions", ""))
+    phases = iv.get("phases", [])
 
     pages = []
-    
     MAX_SESSIONS_PER_PAGE = 6
     MAX_ORALS_PER_PAGE = 6
+
+    # Build phase cards
+    phases_html = ""
+    if phases:
+        phases_html = '<div class="rl" style="margin-bottom:6px;">Recommended Cadence</div><div style="display:flex;flex-direction:column;gap:5px;margin-bottom:9px;">'
+        for ph in phases:
+            phases_html += f"""<div class="phase-card">
+  <div class="phase-lbl">{_e(ph.get("phase",""))}</div>
+  <div class="phase-txt">{_e(ph.get("description",""))}</div>
+</div>"""
+        phases_html += "</div>"
 
     # Convert sessions to HTML
     session_divs = []
@@ -788,46 +897,49 @@ def _page_iv_protocol(d: dict) -> list[str]:
   <div class="srw">{_e(o.get("rationale",""))}</div>
  </div>""")
 
-    # Create first page with rationale, exclusions, and first chunk of sessions/orals
     sessions_chunk = session_divs[:MAX_SESSIONS_PER_PAGE]
     orals_chunk = oral_divs[:MAX_ORALS_PER_PAGE]
-    
+
     session_html = f'<div class="g2 mb9" style="grid-template-columns:repeat(3,1fr);gap:7px;">{"".join(sessions_chunk)}</div>' if sessions_chunk else ""
-    oral_html = f'<div class="rl">Oral Supplement Programme</div><div style="display:flex;flex-direction:column;gap:5px;">{"".join(orals_chunk)}</div>' if orals_chunk else ""
-    
+    oral_html = f'<div class="rl">Daily Oral Supplement Support</div><div style="display:flex;flex-direction:column;gap:5px;">{"".join(orals_chunk)}</div>' if orals_chunk else ""
+
+    # Determine a patient-specific section tag
+    iv_tag = _e(iv.get("section_tag", "NAD⁺-Anchored · Insulin · Hepatic · Antioxidant"))
+
     pages.append(f"""<div class="pg">
  <div class="pg-body">
   {_page_header(p)}
-  <div class="sh"><div class="sn">09</div><div><div class="st">Vytalyou IV Therapy Protocol</div><div class="stg"><span class="stag">Lp(a) · Sarcopenia · Anaemia · Cardiac · Micronutrients</span></div></div></div>
-  <div class="co" style="font-size:9px;">{rationale}</div>
-  <div class="excl">{exclusions}</div>
+  <div class="sh"><div class="sn">08</div><div><div class="st">IV Therapy &amp; Supplement Protocol</div><div class="stg"><span class="stag">{iv_tag}</span></div></div></div>
+  <div class="co" style="font-size:9px;"><strong>Rationale.</strong> {rationale}</div>
+  <div class="excl"><strong>Exclusions &amp; Safety Logic:</strong> {exclusions}</div>
+  {session_html}
+  {oral_html}
+  {phases_html}
+ </div>
+ {_footer(name)}
+</div>""")
+
+    # Process remaining if needed
+    session_idx = MAX_SESSIONS_PER_PAGE
+    oral_idx = MAX_ORALS_PER_PAGE
+
+    while session_idx < len(session_divs) or oral_idx < len(oral_divs):
+        sessions_chunk = session_divs[session_idx:session_idx + MAX_SESSIONS_PER_PAGE]
+        orals_chunk = oral_divs[oral_idx:oral_idx + MAX_ORALS_PER_PAGE]
+
+        session_html = f'<div class="g2 mb9" style="grid-template-columns:repeat(3,1fr);gap:7px;">{"".join(sessions_chunk)}</div>' if sessions_chunk else ""
+        oral_html = f'<div class="rl">Oral Supplement Programme (Continued)</div><div style="display:flex;flex-direction:column;gap:5px;">{"".join(orals_chunk)}</div>' if orals_chunk else ""
+
+        pages.append(f"""<div class="pg">
+ <div class="pg-body">
+  {_page_header(p)}
+  <div class="sh"><div class="sn">08</div><div><div class="st">IV Therapy &amp; Supplement Protocol (Continued)</div><div class="stg"><span class="stag">{iv_tag}</span></div></div></div>
   {session_html}
   {oral_html}
  </div>
  {_footer(name)}
 </div>""")
 
-    # Process remaining chunks if any
-    session_idx = MAX_SESSIONS_PER_PAGE
-    oral_idx = MAX_ORALS_PER_PAGE
-    
-    while session_idx < len(session_divs) or oral_idx < len(oral_divs):
-        sessions_chunk = session_divs[session_idx:session_idx + MAX_SESSIONS_PER_PAGE]
-        orals_chunk = oral_divs[oral_idx:oral_idx + MAX_ORALS_PER_PAGE]
-        
-        session_html = f'<div class="g2 mb9" style="grid-template-columns:repeat(3,1fr);gap:7px;">{"".join(sessions_chunk)}</div>' if sessions_chunk else ""
-        oral_html = f'<div class="rl">Oral Supplement Programme (Continued)</div><div style="display:flex;flex-direction:column;gap:5px;">{"".join(orals_chunk)}</div>' if orals_chunk else ""
-        
-        pages.append(f"""<div class="pg">
- <div class="pg-body">
-  {_page_header(p)}
-  <div class="sh"><div class="sn">09</div><div><div class="st">Vytalyou IV Therapy Protocol (Continued)</div><div class="stg"><span class="stag">Lp(a) · Sarcopenia · Anaemia · Cardiac · Micronutrients</span></div></div></div>
-  {session_html}
-  {oral_html}
- </div>
- {_footer(name)}
-</div>""")
-        
         session_idx += MAX_SESSIONS_PER_PAGE
         oral_idx += MAX_ORALS_PER_PAGE
 
@@ -878,7 +990,7 @@ def _page_longevity_scores(d: dict) -> list[str]:
     return [f"""<div class="pg">
  <div class="pg-body">
   {_page_header(p)}
-  <div class="sh"><div class="sn">10</div><div><div class="st">Longevity Score System</div><div class="stg"><span class="stag">Domain Scoring · Trajectory · Priority Actions</span></div></div></div>
+  <div class="sh"><div class="sn">09</div><div><div class="st">Longevity Score — Domain Breakdown</div><div class="stg"><span class="stag">Six Domains · Scored out of 20 · Composite Index</span></div></div></div>
   <div style="overflow:hidden;border-radius:3px;border:1px solid var(--border);box-shadow:var(--shadow);">
   <table style="width:100%;border-collapse:collapse;">
    <thead><tr style="background:var(--navy);">
@@ -886,7 +998,7 @@ def _page_longevity_scores(d: dict) -> list[str]:
     <th style="padding:8px 10px;text-align:left;font-size:7px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.72);font-weight:400;width:70px;">Score</th>
     <th style="padding:8px 10px;text-align:left;font-size:7px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.72);font-weight:400;">Key Findings</th>
     <th style="padding:8px 10px;text-align:left;font-size:7px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.72);font-weight:400;width:120px;">Trajectory</th>
-    <th style="padding:8px 10px;text-align:left;font-size:7px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.72);font-weight:400;">Priority Action</th>
+    <th style="padding:8px 10px;text-align:left;font-size:7px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.72);font-weight:400;">Primary Action</th>
    </tr></thead>
    <tbody style="font-size:9.5px;">{rows}
    <tr class="tr-tot">
@@ -911,8 +1023,9 @@ def _page_healthspan(d: dict) -> list[str]:
     chron_note = _e(hs.get("chronological_age_note", ""))
     bio = _e(hs.get("biological_age", ""))
     bio_note = _e(hs.get("biological_age_note", ""))
-    cur = _e(hs.get("current_healthspan", ""))
-    cur_note = _e(hs.get("current_healthspan_note", ""))
+    gap_exp = _e(hs.get("gap_explanation", ""))
+    cur = _e(hs.get("current_trajectory", hs.get("current_healthspan", "")))
+    cur_note = _e(hs.get("current_trajectory_note", hs.get("current_healthspan_note", "")))
     pot = _e(hs.get("potential_healthspan", ""))
     pot_note = _e(hs.get("potential_healthspan_note", ""))
     opp = _e(hs.get("opportunity_text", ""))
@@ -920,7 +1033,6 @@ def _page_healthspan(d: dict) -> list[str]:
     projs = hs.get("projections", [])
     proj_html = ""
     for pr in projs:
-        col_map = {"red": "var(--red)", "green": "var(--green)", "navy": "var(--navy)"}
         label_col_map = {"danger": "var(--red)", "success": "var(--green)"}
         lbl_col = label_col_map.get(pr.get("style", ""), "var(--text-mid)")
         bar_style = _proj_bar_style(pr)
@@ -940,24 +1052,27 @@ def _page_healthspan(d: dict) -> list[str]:
   <div style="margin-top:6px;{impact_style}border-radius:2px;padding:4px 8px;font-size:8px;font-weight:600;">{_e(c.get("impact_label",""))}</div>
  </div>"""
 
-    hs_tag = _e(hs.get("section_tag", "Healthspan Analysis · Intervention Impact · Projection"))
+    hs_tag = _e(hs.get("section_tag", "Biological Age · Healthspan Trajectory · Achievable Gain"))
+
+    gap_html = f'<div class="co" style="font-size:9px;margin-bottom:9px;"><strong>A wide gap — and an unusually large, reachable upside.</strong> {gap_exp}</div>' if gap_exp else ""
 
     return [f"""<div class="pg">
  <div class="pg-body">
   {_page_header(p)}
-  <div class="sh"><div class="sn">11</div><div><div class="st">Healthspan Analysis &amp; Projection</div><div class="stg"><span class="stag">{hs_tag}</span></div></div></div>
+  <div class="sh"><div class="sn">10</div><div><div class="st">Healthspan Projection</div><div class="stg"><span class="stag">{hs_tag}</span></div></div></div>
+  {gap_html}
   <div class="g4 mb9">
    <div class="hsc"><div class="hsl">Chronological Age</div><div class="hsv n">{chron}</div><div class="hsn">{chron_note}</div></div>
-   <div class="hsc"><div class="hsl">Estimated Biological Age</div><div class="hsv r">{bio}</div><div class="hsn" style="color:var(--red);">{bio_note}</div></div>
-   <div class="hsc"><div class="hsl">Current Healthspan Remaining</div><div class="hsv r">{cur}</div><div class="hsn">{cur_note}</div></div>
-   <div class="hsc"><div class="hsl">Potential Healthspan with Intervention</div><div class="hsv g">{pot}</div><div class="hsn" style="color:var(--green);">{pot_note}</div></div>
+   <div class="hsc"><div class="hsl">Biological Age (Est.)</div><div class="hsv r">{bio}</div><div class="hsn" style="color:var(--red);">{bio_note}</div></div>
+   <div class="hsc"><div class="hsl">Current Trajectory</div><div class="hsv r">{cur}</div><div class="hsn">{cur_note}</div></div>
+   <div class="hsc"><div class="hsl">Potential Healthspan Gain</div><div class="hsv g">{pot}</div><div class="hsn" style="color:var(--green);">{pot_note}</div></div>
   </div>
   <div class="card mb9">
    <div style="font-weight:600;font-size:11px;color:var(--navy);margin-bottom:9px;">Healthspan Projection</div>
    {proj_html}
   </div>
   <div class="g3 mb9">{cards_html}</div>
-  <div class="nb" style="font-size:9px;"><strong>The Vytalyou Opportunity:</strong> {opp}</div>
+  <div class="nb" style="font-size:9px;"><strong>The headline.</strong> {opp}</div>
  </div>
  {_footer(name)}
 </div>"""]
@@ -982,15 +1097,15 @@ def _page_authorization(d: dict) -> list[str]:
 
     disc_points = auth.get("disclaimer_points", [])
     disc_html = "".join(
-        f'<p><strong>{_e(dp.get("num",""))}. {_e(dp.get("title",""))}:</strong> {_e(dp.get("text",""))}</p>'
+        f'<p><strong>{_e(dp.get("num",""))}. {_e(dp.get("title",""))}.</strong> {_e(dp.get("text",""))}</p>'
         for dp in disc_points
     )
 
     return [f"""<div class="pg">
  <div class="pg-body">
   {_page_header(p)}
-  <div class="sh"><div class="sn">12</div><div><div class="st">Digital Authorization</div><div class="stg"><span class="stag">Vytalyou Medical Team &middot; {gen_date}</span></div></div></div>
-  <div class="co navy" style="font-size:9px;margin-bottom:12px;"><strong>Digitally Authorized — Vytalyou Ultra Precision Longevity Report:</strong> {auth_text}</div>
+  <div class="sh"><div class="sn">11</div><div><div class="st">Clinical Authorization</div><div class="stg"><span class="stag">Medical Review · Sign-Off · Disclaimers</span></div></div></div>
+  <div class="co navy" style="font-size:9px;margin-bottom:12px;"><strong>Reviewed, integrated and authorised.</strong> {auth_text}</div>
   <div class="g2" style="margin-bottom:12px;">
    <div class="sig">
     <div class="siga">{d1_ini}</div>
@@ -1029,9 +1144,11 @@ def _page_authorization(d: dict) -> list[str]:
 # ──────────────────────────────────────────────────────────────────────────────
 
 class AnthropicPDFGenerator:
-    """Renders the premium A4 HTML report from Claude's structured JSON."""
-
-    TOTAL_PAGES = 11
+    """Renders the premium A4 HTML report from Claude's structured JSON.
+    
+    Supports both new schema (lab_results_a/b, imaging.subsections, iv_protocol.phases,
+    flexible cover primary_concern_* fields) and legacy schema (backward compat).
+    """
 
     def generate_report_html(self, json_data: dict, session_id: str) -> str:
         """
@@ -1042,7 +1159,10 @@ class AnthropicPDFGenerator:
         pages.extend(_page_cover(json_data))
         pages.extend(_page_executive_summary(json_data))
         pages.extend(_page_risk_radar_inbody(json_data))
-        pages.extend(_page_lab_results(json_data))
+        # Lab results: split into Part A (abnormal) and Part B (protective)
+        pages.extend(_page_lab_results_a(json_data))
+        pages.extend(_page_lab_results_b(json_data))
+        # Imaging + Echo + ECG combined
         pages.extend(_page_imaging(json_data))
         pages.extend(_page_aha_risk(json_data))
         pages.extend(_page_roadmap(json_data))
@@ -1053,10 +1173,10 @@ class AnthropicPDFGenerator:
 
         total_pages = len(pages)
         final_pages = []
-        for i, p in enumerate(pages, 1):
-            p = p.replace("__PAGE_NUM__", str(i))
-            p = p.replace("__TOTAL_PAGES__", str(total_pages))
-            final_pages.append(p)
+        for i, pg in enumerate(pages, 1):
+            pg = pg.replace("__PAGE_NUM__", str(i))
+            pg = pg.replace("__TOTAL_PAGES__", str(total_pages))
+            final_pages.append(pg)
 
         return f"""<!DOCTYPE html>
 <html lang="en">

@@ -142,7 +142,7 @@ class LLMEngine:
         model: str,
         system: str,
         user: str,
-        max_tokens: int = 4096,
+        max_tokens: int = 16000,
         temperature: float = 0.3,
         json_mode: bool = False,
     ) -> str:
@@ -159,7 +159,7 @@ class LLMEngine:
 
         messages = [{"role": "user", "content": user}]
         full_text = ""
-        MAX_CONTINUATIONS = 5
+        MAX_CONTINUATIONS = 8
 
         # Map friendly UI names to actual Anthropic API model IDs
         # Try multiple ID formats — Anthropic changed naming in 2025
@@ -296,9 +296,9 @@ class LLMEngine:
 
             raw_a, raw_b = await asyncio.gather(
                 self._chat(model=model, system=system_a, user=CLAUDE_REPORT_PART_A_USER,
-                           max_tokens=8192, temperature=0.3, json_mode=True),
+                           max_tokens=16000, temperature=0.3, json_mode=True),
                 self._chat(model=model, system=system_b, user=CLAUDE_REPORT_PART_B_USER,
-                           max_tokens=8192, temperature=0.3, json_mode=True),
+                           max_tokens=16000, temperature=0.3, json_mode=True),
             )
 
             logger.info(f"[LLM] Part A: {len(raw_a)} chars, Part B: {len(raw_b)} chars")
