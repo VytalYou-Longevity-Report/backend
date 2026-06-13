@@ -307,17 +307,80 @@ class LLMEngine:
             raw_a = self._clean_json_text(raw_a)
             raw_b = self._clean_json_text(raw_b)
 
+            def _repair_json(text: str) -> dict:
+                """Attempt to parse JSON, repairing truncation if needed."""
+                text = text.strip()
+                if not text:
+                    return {}
+                
+                # First try: direct parse
+                try:
+                    return json.loads(text)
+                except json.JSONDecodeError:
+                    pass
+
+                # Second try: strip trailing garbage and fix unclosed structures
+                # Find the outermost opening brace
+                start = text.find('{')
+                if start == -1:
+                    return {}
+                text = text[start:]
+
+                # Remove trailing commas
+                text = re.sub(r',\s*$', '', text)
+
+                # Count braces/brackets and add missing closers
+                open_braces = text.count('{') - text.count('}')
+                open_brackets = text.count('[') - text.count(']')
+
+                # If inside an unclosed string, close it
+                # Count unescaped quotes
+                in_string = False
+                for i, c in enumerate(text):
+                    if c == '"' and (i == 0 or text[i-1] != '\\'):
+                        in_string = not in_string
+                if in_string:
+                    text += '"'
+
+                # Remove any trailing comma after closing the string
+                text = re.sub(r',\s*$', '', text)
+
+                # Close brackets then braces
+                text += ']' * max(0, open_brackets)
+                text += '}' * max(0, open_braces)
+
+                # Remove trailing commas before closers
+                text = re.sub(r',\s*([\]}])', r'\1', text)
+
+                try:
+                    return json.loads(text)
+                except json.JSONDecodeError as e2:
+                    logger.error(f"[LLM] JSON repair failed: {e2}")
+                    logger.error(f"[LLM] Last 200 chars: ...{text[-200:]}")
+                    return {}
+
             try:
-                part_a = json.loads(raw_a)
-                part_b = json.loads(raw_b)
-                merged = {**part_a, **part_b}
-                raw = json.dumps(merged)
-                logger.info(f"[LLM] Merged JSON: {len(raw)} chars, {len(merged)} top-level keys")
-            except json.JSONDecodeError as e:
-                logger.error(f"[LLM] JSON merge failed: {e}")
-                logger.error(f"[LLM] Part A preview: {raw_a[:200]}")
-                logger.error(f"[LLM] Part B preview: {raw_b[:200]}")
-                # Return the raw text so the error handler in main.py can show it
+                part_a = _repair_json(raw_a)
+                part_b = _repair_json(raw_b)
+
+                if not part_a and not part_b:
+                    logger.error("[LLM] Both Part A and Part B produced empty JSON!")
+                    raw = "{}"
+                elif not part_b:
+                    logger.warning("[LLM] Part B JSON failed — using Part A only")
+                    raw = json.dumps(part_a)
+                elif not part_a:
+                    logger.warning("[LLM] Part A JSON failed — using Part B only")
+                    raw = json.dumps(part_b)
+                else:
+                    merged = {**part_a, **part_b}
+                    raw = json.dumps(merged)
+                    logger.info(f"[LLM] Merged JSON: {len(raw)} chars, {len(merged)} top-level keys: {list(merged.keys())}")
+
+            except Exception as e:
+                logger.error(f"[LLM] JSON merge failed unexpectedly: {e}")
+                logger.error(f"[LLM] Part A preview: {raw_a[:300]}")
+                logger.error(f"[LLM] Part B preview: {raw_b[:300]}")
                 raw = raw_a
 
         else:
