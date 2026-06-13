@@ -24,8 +24,10 @@ from prompts.longevity_report import (
 from prompts.claude_structured_report import (
     CLAUDE_REPORT_PART_A_SYSTEM,
     CLAUDE_REPORT_PART_A_USER,
-    CLAUDE_REPORT_PART_B_SYSTEM,
-    CLAUDE_REPORT_PART_B_USER,
+    CLAUDE_REPORT_PART_B1_SYSTEM,
+    CLAUDE_REPORT_PART_B1_USER,
+    CLAUDE_REPORT_PART_B2_SYSTEM,
+    CLAUDE_REPORT_PART_B2_USER,
 )
 from prompts.physician_sheet import (
     PHYSICIAN_SHEET_SYSTEM_PROMPT,
@@ -288,26 +290,30 @@ class LLMEngine:
         logger.info(f"[LLM] Raw text length: {len(serialized.get('raw_text', ''))} chars")
 
         if provider == "anthropic":
-            # ── Split into 2 parallel calls ───────────────────────────────
+            # ── Split into 3 parallel calls (A + B1 + B2) ────────────────
             system_a = CLAUDE_REPORT_PART_A_SYSTEM.format(**serialized)
-            system_b = CLAUDE_REPORT_PART_B_SYSTEM.format(**serialized)
+            system_b1 = CLAUDE_REPORT_PART_B1_SYSTEM.format(**serialized)
+            system_b2 = CLAUDE_REPORT_PART_B2_SYSTEM.format(**serialized)
 
-            logger.info("[LLM] Anthropic: launching Part A + Part B in parallel")
+            logger.info("[LLM] Anthropic: launching Part A + B1 + B2 in parallel")
 
-            raw_a, raw_b = await asyncio.gather(
+            raw_a, raw_b1, raw_b2 = await asyncio.gather(
                 self._chat(model=model, system=system_a, user=CLAUDE_REPORT_PART_A_USER,
                            max_tokens=16000, temperature=0.3, json_mode=True),
-                self._chat(model=model, system=system_b, user=CLAUDE_REPORT_PART_B_USER,
+                self._chat(model=model, system=system_b1, user=CLAUDE_REPORT_PART_B1_USER,
+                           max_tokens=16000, temperature=0.3, json_mode=True),
+                self._chat(model=model, system=system_b2, user=CLAUDE_REPORT_PART_B2_USER,
                            max_tokens=16000, temperature=0.3, json_mode=True),
             )
 
-            logger.info(f"[LLM] Part A: {len(raw_a)} chars, Part B: {len(raw_b)} chars")
+            logger.info(f"[LLM] Part A: {len(raw_a)} chars, Part B1: {len(raw_b1)} chars, Part B2: {len(raw_b2)} chars")
 
-            # Parse and merge
+            # Parse and merge all 3 parts
             raw_a = self._clean_json_text(raw_a)
-            raw_b = self._clean_json_text(raw_b)
+            raw_b1 = self._clean_json_text(raw_b1)
+            raw_b2 = self._clean_json_text(raw_b2)
 
-            def _repair_json(text: str) -> dict:
+            def _repair_json(text: str, label: str) -> dict:
                 """Attempt to parse JSON, repairing truncation if needed."""
                 text = text.strip()
                 if not text:
@@ -320,7 +326,6 @@ class LLMEngine:
                     pass
 
                 # Second try: strip trailing garbage and fix unclosed structures
-                # Find the outermost opening brace
                 start = text.find('{')
                 if start == -1:
                     return {}
@@ -334,7 +339,6 @@ class LLMEngine:
                 open_brackets = text.count('[') - text.count(']')
 
                 # If inside an unclosed string, close it
-                # Count unescaped quotes
                 in_string = False
                 for i, c in enumerate(text):
                     if c == '"' and (i == 0 or text[i-1] != '\\'):
@@ -342,46 +346,41 @@ class LLMEngine:
                 if in_string:
                     text += '"'
 
-                # Remove any trailing comma after closing the string
                 text = re.sub(r',\s*$', '', text)
-
-                # Close brackets then braces
                 text += ']' * max(0, open_brackets)
                 text += '}' * max(0, open_braces)
-
-                # Remove trailing commas before closers
                 text = re.sub(r',\s*([\]}])', r'\1', text)
 
                 try:
                     return json.loads(text)
                 except json.JSONDecodeError as e2:
-                    logger.error(f"[LLM] JSON repair failed: {e2}")
-                    logger.error(f"[LLM] Last 200 chars: ...{text[-200:]}")
+                    logger.error(f"[LLM] {label} JSON repair failed: {e2}")
+                    logger.error(f"[LLM] {label} last 200 chars: ...{text[-200:]}")
                     return {}
 
             try:
-                part_a = _repair_json(raw_a)
-                part_b = _repair_json(raw_b)
+                part_a = _repair_json(raw_a, "Part A")
+                part_b1 = _repair_json(raw_b1, "Part B1")
+                part_b2 = _repair_json(raw_b2, "Part B2")
 
-                if not part_a and not part_b:
-                    logger.error("[LLM] Both Part A and Part B produced empty JSON!")
+                merged = {}
+                for label, part in [("A", part_a), ("B1", part_b1), ("B2", part_b2)]:
+                    if part:
+                        merged.update(part)
+                        logger.info(f"[LLM] Part {label}: {len(part)} keys merged")
+                    else:
+                        logger.warning(f"[LLM] Part {label} JSON was empty!")
+
+                if not merged:
+                    logger.error("[LLM] All parts produced empty JSON!")
                     raw = "{}"
-                elif not part_b:
-                    logger.warning("[LLM] Part B JSON failed — using Part A only")
-                    raw = json.dumps(part_a)
-                elif not part_a:
-                    logger.warning("[LLM] Part A JSON failed — using Part B only")
-                    raw = json.dumps(part_b)
                 else:
-                    merged = {**part_a, **part_b}
                     raw = json.dumps(merged)
-                    logger.info(f"[LLM] Merged JSON: {len(raw)} chars, {len(merged)} top-level keys: {list(merged.keys())}")
+                    logger.info(f"[LLM] Final merged JSON: {len(raw)} chars, {len(merged)} top-level keys: {list(merged.keys())}")
 
             except Exception as e:
                 logger.error(f"[LLM] JSON merge failed unexpectedly: {e}")
-                logger.error(f"[LLM] Part A preview: {raw_a[:300]}")
-                logger.error(f"[LLM] Part B preview: {raw_b[:300]}")
-                raw = raw_a
+                raw = json.dumps(_repair_json(raw_a, "fallback")) if raw_a else "{}"
 
         else:
             system_prompt = LONGEVITY_REPORT_SYSTEM_PROMPT.format(**serialized)

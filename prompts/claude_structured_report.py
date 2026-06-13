@@ -1,11 +1,11 @@
 """
-VYTALYOU™ Claude Structured Report Prompt — SPLIT INTO 2 PARTS
+VYTALYOU™ Claude Structured Report Prompt — SPLIT INTO 3 PARTS
 Each part fits within Claude's output token limit (~16000 tokens).
-Both parts share the same input data header.
+All parts share the same input data header.
 The backend runs them in parallel and merges the results.
 """
 
-# ─── Shared data header injected into both prompts ────────────────────────────
+# ─── Shared data header injected into all prompts ─────────────────────────────
 _DATA_HEADER = """You are VYTALYOU™ AI — a world-class longevity physician system trained in advanced metabolic medicine, preventive cardiology, body composition science, and systems-level aging analysis.
 
 Your task is to analyse all provided medical data and return a SINGLE, COMPLETE, VALID JSON object for the requested report sections.
@@ -181,13 +181,13 @@ Return ONLY the JSON object. No markdown fences."""
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PART B: lab_results_a, lab_results_b, imaging, aha_risk, roadmap, iv_protocol, longevity_scores, healthspan, authorization
+# PART B1: lab_results_a, lab_results_b, imaging
 # ═══════════════════════════════════════════════════════════════════════════════
 
-CLAUDE_REPORT_PART_B_SYSTEM = _DATA_HEADER + """
+CLAUDE_REPORT_PART_B1_SYSTEM = _DATA_HEADER + """
 ---
 
-## JSON SCHEMA — PART B (lab_results_a, lab_results_b, imaging, aha_risk, roadmap, iv_protocol, longevity_scores, healthspan, authorization)
+## JSON SCHEMA — PART B1 (lab_results_a, lab_results_b, imaging)
 
 Return exactly this structure:
 
@@ -226,37 +226,27 @@ Return exactly this structure:
     "subsections": [
       {{
         "title": "LIVER",
-        "findings": [
-          "Specific finding — one line each with values"
-        ],
+        "findings": ["Specific finding — one line each with values"],
         "impression": "2-3 sentence clinical impression specific to this organ"
       }},
       {{
         "title": "OVARIES / PELVIS",
-        "findings": [
-          "Finding 1"
-        ],
+        "findings": ["Finding 1"],
         "impression": "2-3 sentence impression"
       }},
       {{
         "title": "ABDOMEN",
-        "findings": [
-          "Finding 1"
-        ],
+        "findings": ["Finding 1"],
         "impression": "1-2 sentence impression"
       }},
       {{
         "title": "NECK · CAROTID · THYROID",
-        "findings": [
-          "Finding 1"
-        ],
+        "findings": ["Finding 1"],
         "impression": "1-2 sentence impression"
       }},
       {{
         "title": "CHEST X-RAY",
-        "findings": [
-          "Finding 1"
-        ],
+        "findings": ["Finding 1"],
         "impression": "1-2 sentence impression"
       }}
     ],
@@ -269,15 +259,47 @@ Return exactly this structure:
         {{"label": "LVID (Diastole)", "value": "43 mm (Normal)"}}
       ],
       "impression": "3-4 sentence echo impression with specific values, what the structural findings mean, and clinical significance",
-      "cardiac_special_box": "3-4 sentence explanation of the most significant cardiac finding for this patient — e.g. LVH + diastolic dysfunction context, or aortic sclerosis context. Include specific mm values, what they mean prognostically, and what they require."
+      "cardiac_special_box": "3-4 sentence explanation of the most significant cardiac finding for this patient — include specific mm values, what they mean prognostically, and what they require."
     }},
     "ecg": {{
       "findings": "ECG findings — 1-2 sentences",
       "impression": "Normal / Abnormal summary"
     }},
     "imaging_synthesis": "3-4 sentence synthesis of what the imaging tells us together — connect the findings across organs to the root cause"
-  }},
+  }}
+}}
 
+MANDATORY: Fill EVERY field with real data from the patient's reports. Clinical narratives must be 3-6 sentences — not 1-2. Return ONLY the JSON object.
+"""
+
+CLAUDE_REPORT_PART_B1_USER = """Generate PART B1 of the VYTALYOU™ structured JSON report now (lab_results_a, lab_results_b, imaging).
+
+MANDATORY CHECKLIST — verify ALL before completing:
+1. All lab values match actual raw data — deep scan raw text for EVERY metric including HOMA-IR, ApoB, Lp(a), uric acid, transferrin sat, hs-CRP, homocysteine, all CBC components
+2. lab_results_a has at least 6 abnormal findings with 3-4 sentence clinical_significance each
+3. lab_results_b has at least 6 protective findings with 2-3 sentence why_matters each
+4. lab_results_a.reading_note and lab_results_b.reading_note are 3-4 sentences each
+5. imaging.subsections has individual cards for: Liver, Pelvis/Ovaries, Abdomen, Neck/Carotid/Thyroid, Chest X-Ray — ALL populated from radiology text
+6. imaging.echo has at least 8 echo params and 3-4 sentence impression
+7. imaging.cardiac_special_box is 3-4 sentences with specific mm values
+8. imaging.imaging_synthesis is 3-4 sentences connecting all imaging findings
+9. JSON is complete and valid — no trailing commas
+
+Return ONLY the JSON object. No markdown fences."""
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PART B2: aha_risk, roadmap, iv_protocol, longevity_scores, healthspan, authorization
+# ═══════════════════════════════════════════════════════════════════════════════
+
+CLAUDE_REPORT_PART_B2_SYSTEM = _DATA_HEADER + """
+---
+
+## JSON SCHEMA — PART B2 (aha_risk, roadmap, iv_protocol, longevity_scores, healthspan, authorization)
+
+Return exactly this structure:
+
+{{
   "aha_risk": {{
     "risk_percent_low": 3,
     "risk_percent_high": 5,
@@ -377,28 +399,28 @@ Return exactly this structure:
     "intervention_cards": [
       {{
         "title": "What Sets the Gap",
-        "detail": "3-4 sentence explanation of what drives the +10 year biological age gap — specific values, mechanisms",
+        "detail": "3-4 sentence explanation of what drives the biological age gap — specific values, mechanisms",
         "impact_label": "ACQUIRED, REVERSIBLE",
         "impact_severity": "critical"
       }},
       {{
         "title": "What Moves the Needle",
-        "detail": "3-4 sentence explanation of the single intervention (fat loss + insulin sensitisation) and how many domains it improves simultaneously",
+        "detail": "3-4 sentence explanation of the single intervention and how many domains it improves simultaneously",
         "impact_label": "+8 TO +9 YEARS",
         "impact_severity": "moderate"
       }},
       {{
         "title": "Why the Upside Is Large",
-        "detail": "3-4 sentence explanation of why acting NOW — before fibrosis, diabetes, or established heart disease — captures maximum benefit. Reference patient's age and preserved protective factors.",
-        "impact_label": "LONG RUNWAY AT 39",
+        "detail": "3-4 sentence explanation of why acting NOW captures maximum benefit. Reference patient's age and preserved protective factors.",
+        "impact_label": "LONG RUNWAY",
         "impact_severity": "positive"
       }}
     ],
-    "opportunity_text": "4-5 sentence narrative: the headline summary of the healthspan opportunity — specific, personal, calibrated to this patient's data. Should be inspiring and medically honest."
+    "opportunity_text": "4-5 sentence narrative: the headline summary of the healthspan opportunity — specific, personal, calibrated to this patient's data."
   }},
 
   "authorization": {{
-    "auth_text": "2-3 sentence authorization text describing what this report covers and what specialist referrals are still required for this patient specifically",
+    "auth_text": "2-3 sentence authorization text describing what this report covers and what specialist referrals are still required",
     "doctor_1_initials": "CB",
     "doctor_1_name": "Dr. Chirantan Bose",
     "doctor_1_quals": "MBBS, MD, MBA, M.Sc (Molecular Oncology)",
@@ -413,7 +435,7 @@ Return exactly this structure:
       {{"num": "1", "title": "Purpose & Scope", "text": "This report is a preventive and predictive longevity assessment intended to inform proactive health optimisation. It is not a substitute for emergency or disease-specific medical care, and does not establish a standalone diagnosis."}},
       {{"num": "2", "title": "Clinical Correlation Required", "text": "All findings, scores and recommendations must be interpreted alongside an in-person clinical evaluation, personal and family history, and the treating physician's judgement — including decisions on any pharmacotherapy."}},
       {{"num": "3", "title": "Conditional Therapeutics", "text": "Conditional IV therapeutics and pharmacological suggestions are subject to in-person review. High-dose intravenous vitamin C is withheld pending G6PD confirmation. Iron supplementation is oral only after deficiency confirmation."}},
-      {{"num": "4", "title": "Cardiac & Endocrine Findings", "text": "The reported cardiac remodeling and endocrine findings (PCOS) warrant specialist review — cardiology and gynaecology/endocrine referrals are explicitly recommended. This report does not replace those specialist assessments."}},
+      {{"num": "4", "title": "Cardiac & Endocrine Findings", "text": "The reported cardiac remodeling and endocrine findings warrant specialist review — cardiology and relevant specialist referrals are explicitly recommended. This report does not replace those specialist assessments."}},
       {{"num": "5", "title": "Estimative Metrics & Confidentiality", "text": "Biological age, longevity score and healthspan projections are model-based estimates for illustrative purposes and are not guarantees of outcome. This document contains protected personal health information intended solely for the named patient and authorised clinicians."}}
     ]
   }}
@@ -422,32 +444,27 @@ Return exactly this structure:
 MANDATORY: Fill EVERY field with real data from the patient's reports. Clinical narratives must be 3-6 sentences — not 1-2. Return ONLY the JSON object.
 """
 
-CLAUDE_REPORT_PART_B_USER = """Generate PART B of the VYTALYOU™ structured JSON report now (lab_results_a, lab_results_b, imaging, aha_risk, roadmap, iv_protocol, longevity_scores, healthspan, authorization).
+CLAUDE_REPORT_PART_B2_USER = """Generate PART B2 of the VYTALYOU™ structured JSON report now (aha_risk, roadmap, iv_protocol, longevity_scores, healthspan, authorization).
 
 MANDATORY CHECKLIST — verify ALL before completing:
-1. All lab values match actual raw data — deep scan raw text for EVERY metric including HOMA-IR, ApoB, Lp(a), uric acid, transferrin sat, hs-CRP, homocysteine, all CBC components
-2. lab_results_a has at least 6 abnormal findings with 3-4 sentence clinical_significance each
-3. lab_results_b has at least 6 protective findings with 2-3 sentence why_matters each
-4. lab_results_a.reading_note and lab_results_b.reading_note are 3-4 sentences each
-5. imaging.subsections has individual cards for: Liver, Pelvis/Ovaries, Abdomen, Neck/Carotid/Thyroid, Chest X-Ray — ALL populated from radiology text
-6. imaging.echo has at least 8 echo params and 3-4 sentence impression
-7. imaging.cardiac_special_box is 3-4 sentences with specific mm values
-8. imaging.imaging_synthesis is 3-4 sentences connecting all imaging findings
-9. aha_risk.patient_specific_context is 4-5 sentences explaining why standard risk understates urgency
-10. aha_risk.enhancers has at least 5 enhancers with values
-11. roadmap has at least 6 priority sections with 3+ action items each — items must have specific targets/doses/timelines
-12. iv_protocol has phases (Phase 1/2/3), at least 5 IV sessions, and at least 4 oral supplements
-13. iv_protocol.rationale is 3-4 sentences, iv_protocol.sessions[*].rationale is 2-3 sentences each
-14. longevity_scores has at least 6 domain rows, overall_summary is 3-4 sentences
-15. healthspan.gap_explanation and intervention_cards are 3-4 sentences each
-16. healthspan.opportunity_text is 4-5 sentences
-17. authorization.disclaimer_points has 5 points covering purpose, clinical correlation, conditional therapeutics, cardiac/endocrine findings, and confidentiality
-18. JSON is complete and valid — no trailing commas
+1. aha_risk.patient_specific_context is 4-5 sentences explaining why standard risk understates urgency
+2. aha_risk.enhancers has at least 5 enhancers with values
+3. roadmap has at least 6 priority sections with 3+ action items each — items must have specific targets/doses/timelines
+4. iv_protocol has phases (Phase 1/2/3), at least 5 IV sessions, and at least 4 oral supplements
+5. iv_protocol.rationale is 3-4 sentences, iv_protocol.sessions[*].rationale is 2-3 sentences each
+6. longevity_scores has at least 6 domain rows, overall_summary is 3-4 sentences
+7. healthspan.gap_explanation and intervention_cards are 3-4 sentences each
+8. healthspan.opportunity_text is 4-5 sentences
+9. authorization.disclaimer_points has 5 points
+10. JSON is complete and valid — no trailing commas
 
 Return ONLY the JSON object. No markdown fences."""
 
 
-# ─── Legacy single-prompt exports (kept for backward compatibility) ───────────
-# These are no longer used by the engine but kept to avoid import errors
+# ─── Legacy aliases for backward compatibility ────────────────────────────────
+CLAUDE_REPORT_PART_B_SYSTEM = CLAUDE_REPORT_PART_B1_SYSTEM
+CLAUDE_REPORT_PART_B_USER = CLAUDE_REPORT_PART_B1_USER
+
+# ─── Legacy single-prompt exports ────────────────────────────────────────────
 CLAUDE_STRUCTURED_REPORT_SYSTEM_PROMPT = CLAUDE_REPORT_PART_A_SYSTEM
 CLAUDE_STRUCTURED_REPORT_USER_PROMPT = CLAUDE_REPORT_PART_A_USER
